@@ -14,6 +14,6 @@ section .text
       mov rax, 1
       syscall
 
-      mov al, 60                  ;exit
+      mov rax, 60                   ;exit
       syscall
       
