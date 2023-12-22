@@ -26,8 +26,8 @@
 如果喜歡阿布的講述方式，希望更加系統的學習這些知識，也可以看看阿布的新書《CPU眼裏的C/C++》
 <table>
   <tr>
-    <td align="center"><img src="doc/cover-a.jpg" width="400px;"/>
-    <td align="center"><img src="doc/cover-b.jpg" width="400px;"/>
+    <td align="center"><img src="doc/cover-a.jpg" width="400px;"/><br />
+    <td align="center"><img src="doc/cover-b.jpg" width="400px;"/><br />
   </tr>
 </table>
 
