@@ -18,10 +18,21 @@
 <table>
   <tr>
     <td align="center"><a href="source/syscall.s"><img src="doc/syscall.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：系統調用</b></sub></a>
-  </tr>
-  <tr>
+    <td align="center"><a href="source/mfence.cpp"><img src="doc/mfence.png" width="200px;"/><br /><sub><b>CPU眼裏的：内存屏障</b></sub></a>
   </tr>
 </table>
+
+## 📚實體 + 電子書籍
+如果喜歡阿布的講述方式，希望更加系統的學習這些知識，也可以看看阿布的新書《CPU眼裏的C/C++》
+<table>
+  <tr>
+    <td align="center"><a href="source/syscall.s"><img src="doc/cover-a.jpg" width="400px;"/><br /></a>
+    <td align="center"><a href="source/mfence.s"><img src="doc/cover-b.jpg" width="400px;"/><br /></a>
+  </tr>
+</table>
+
+掃描二維碼，5折購買或0元試讀電子版
+![QR code](/doc/buy.png)
 
 ## 📞社區交流
 - 視頻的圖、文版本，可以在：《阿布編程》的公衆號中閲讀
