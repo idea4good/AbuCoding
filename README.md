@@ -19,6 +19,7 @@
   <tr>
     <td align="center"><a href="source/syscall.s"><img src="doc/syscall.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：系統調用</b></sub></a>
     <td align="center"><a href="source/mfence.cpp"><img src="doc/mfence.png" width="200px;"/><br /><sub><b>CPU眼裏的：内存屏障</b></sub></a>
+    <td align="center"><a href="source/setjmp-longjmp.c"><img src="doc/setjmp-longjmp.png" width="200px;"/><br /><sub><b>CPU眼裏的：setjmp/longjmp</b></sub></a>
   </tr>
 </table>
 
