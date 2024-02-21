@@ -19,13 +19,13 @@ int get_access_time(uint8_t* page)
 	unsigned int aux;
 
 	tick1 = __rdtscp(&aux);
-	char tmp = *page;
+	uint8_t tmp = *page;
 	tick2 = __rdtscp(&aux);
 	
 	return (tick2 - tick1);
 }
 
-uint8_t detect_memory1(void* address)
+uint8_t detect_memory1(uint8_t* address)
 {
 	static uint8_t mem_pages[MAX_VALUE][PAGE_SIZE];
 
@@ -36,7 +36,7 @@ uint8_t detect_memory1(void* address)
 	}
 	
 	//move 1 page into cache
-	uint8_t index = *(uint8_t*)address;
+	uint8_t index = *address;
 	uint8_t temp = mem_pages[index][0];
 
 	//find the pages which in cache. Order is lightly mixed up to prevent stride prediction
@@ -52,7 +52,7 @@ uint8_t detect_memory1(void* address)
 	return 0;
 }
 
-uint8_t detect_memory(void* address)
+uint8_t detect_memory(uint8_t* address)
 {
 	static uint8_t mem_pages[MAX_VALUE][PAGE_SIZE];
 
@@ -64,7 +64,7 @@ uint8_t detect_memory(void* address)
 
 	//move 1 page into cache
 	uint8_t index = *(uint8_t*)address;
-	uint8_t temp = mem_pages[index][0];
+	uint8_t tmp = mem_pages[index][0];
 
 	//find the pages which in cache. Order is lightly mixed up to prevent stride prediction
 	int ret = 0;
@@ -83,7 +83,7 @@ uint8_t detect_memory(void* address)
 	return ret;
 }
 
-char data[] = "password";
+uint8_t data[] = "password";
 
 int main()
 {
@@ -91,5 +91,11 @@ int main()
 	for (int i = 0; i < sizeof(data); i++)
 	{
 		printf("%c", detect_memory(&data[i]));
+	}
+
+	printf("\nThe data: ");
+	for (int i = 0; i < sizeof(data); i++)
+	{
+		printf("%c", detect_memory1(&data[i]));
 	}
 }
