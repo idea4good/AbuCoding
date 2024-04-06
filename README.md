@@ -21,6 +21,10 @@
     <td align="center"><a href="source/mfence.cpp"><img src="doc/mfence.png" width="200px;"/><br /><sub><b>CPU眼裏的：内存屏障</b></sub></a>
     <td align="center"><a href="source/setjmp-longjmp.c"><img src="doc/setjmp-longjmp.png" width="200px;"/><br /><sub><b>CPU眼裏的：setjmp/longjmp</b></sub></a>
   </tr>
+  <tr>
+    <td align="center"><a href="source/cache.c"><img src="doc/cache.png" width="200px;"/><br /><sub><b>CPU眼裏的：缓存</b></sub></a>
+    <td align="center"><a href="source/array_overflow.c"><img src="doc/array.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：数组越界</b></sub></a>
+  </tr>
 </table>
 
 ## 📚實體 + 電子書籍
