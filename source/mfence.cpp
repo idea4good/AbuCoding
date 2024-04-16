@@ -1,5 +1,5 @@
-//g++ memFence.cpp --std=c++20 -lpthread
-//g++ memFence.cpp --std=c++20 -lpthread -O3
+//g++ mfence.cpp --std=c++20 -lpthread
+//g++ mfence.cpp --std=c++20 -lpthread -O3
 #include <stdio.h>
 #include <semaphore.h>
 #include <thread>
