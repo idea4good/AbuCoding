@@ -24,6 +24,7 @@
   <tr>
     <td align="center"><a href="source/cache.c"><img src="doc/cache.png" width="200px;"/><br /><sub><b>CPU眼裏的：缓存</b></sub></a>
     <td align="center"><a href="source/array_overflow.c"><img src="doc/array.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：数组越界</b></sub></a>
+    <td align="center"><a href="source/bsod/bsod.c"><img src="doc/bsod.png" width="200px;"/><br /><sub><b>CPU眼裏的：蓝屏</b></sub></a>
   </tr>
 </table>
 
