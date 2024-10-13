@@ -26,6 +26,9 @@
     <td align="center"><a href="source/array_overflow.c"><img src="doc/array.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：数组越界</b></sub></a>
     <td align="center"><a href="source/bsod/bsod.c"><img src="doc/bsod.png" width="200px;"/><br /><sub><b>CPU眼裏的：蓝屏</b></sub></a>
   </tr>
+  <tr>
+    <td align="center"><a href="source/prediction.c"><img src="doc/prediction.png" width="200px;"/><br /><sub><b>CPU眼裏的：分支預測</b></sub></a>
+  </tr>
 </table>
 
 ## 📚實體 + 電子書籍
