@@ -8,6 +8,7 @@
 #endif
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define PAGE_NUM            256
 #define CACHE_HIT_THRESHOLD 100
@@ -45,6 +46,8 @@ int data = 100;
 
 int main()
 {
+    memset(mem_pages, 1, sizeof(mem_pages));
+
     for(int i = 0; i < 30; i++)
     {
         _mm_clflush(&data);

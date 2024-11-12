@@ -1,4 +1,4 @@
-﻿//Build from Visual Studio command prompt: cl cache.c
+﻿//Build from Visual Studio command prompt: cl.exe cache.c
 //Build with GCC: gcc cache.c
 
 #ifdef _MSC_VER
@@ -8,10 +8,13 @@
 #endif
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define PAGE_SIZE			(1024 * 4)
 #define MAX_VALUE			256
 #define CACHE_HIT_THRESHOLD 100
+
+static uint8_t mem_pages[MAX_VALUE][PAGE_SIZE];
 
 int get_access_time(uint8_t* page)
 {
@@ -25,10 +28,8 @@ int get_access_time(uint8_t* page)
 	return (tick2 - tick1);
 }
 
-uint8_t detect_memory1(uint8_t* address)
+uint8_t detect_memory_quick(uint8_t* address)
 {
-	static uint8_t mem_pages[MAX_VALUE][PAGE_SIZE];
-
 	//move all pages out of cache
 	for (int i = 0; i < MAX_VALUE; i++)
 	{
@@ -49,13 +50,11 @@ uint8_t detect_memory1(uint8_t* address)
 		}
 	}
 
-	return 0;
+	return '?';
 }
 
-uint8_t detect_memory(uint8_t* address)
+uint8_t detect_memory_slow(uint8_t* address)
 {
-	static uint8_t mem_pages[MAX_VALUE][PAGE_SIZE];
-
 	//move all pages out of cache
 	for (int i = 0; i < MAX_VALUE; i++)
 	{
@@ -67,7 +66,7 @@ uint8_t detect_memory(uint8_t* address)
 	uint8_t tmp = mem_pages[index][0];
 
 	//find the pages which in cache. Order is lightly mixed up to prevent stride prediction
-	int ret = 0;
+	int ret = '?';
 	int min_time = 10000000;
 	for (int i = 0; i < MAX_VALUE; i++)
 	{
@@ -87,15 +86,19 @@ uint8_t data[] = "password";
 
 int main()
 {
-	printf("The data: ");
-	for (int i = 0; i < sizeof(data); i++)
-	{
-		printf("%c", detect_memory(&data[i]));
-	}
+	memset(mem_pages, 1, sizeof(mem_pages));
 
-	printf("\nThe data: ");
-	for (int i = 0; i < sizeof(data); i++)
+	printf("The data: ");
+	for (int i = 0; i < strlen(data); i++)
 	{
-		printf("%c", detect_memory1(&data[i]));
+		printf("%c", detect_memory_quick(&data[i]));
 	}
+	printf("\n");
+
+	printf("The data: ");
+	for (int i = 0; i < strlen(data); i++)
+	{
+		printf("%c", detect_memory_slow(&data[i]));
+	}
+	printf("\n");
 }
