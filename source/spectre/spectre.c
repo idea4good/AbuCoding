@@ -54,7 +54,7 @@ int get_access_time(uint8_t* page)
     return (tick2 - tick1);
 }
 
-void detect_cached_page(int results[256])
+void detect_cached_page(int results[PAGE_NUM])
 {
     int min_time = 10000000;
     int cached_page_index = -1;
@@ -76,11 +76,11 @@ void detect_cached_page(int results[256])
     }
 }
 
-uint8_t get_best_result(int results[256])
+uint8_t get_best_result(int results[PAGE_NUM])
 {
     uint8_t ret = '?';
     int max = 0;
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < PAGE_NUM; i++)
     {
         if (results[i] > max)
         {   
@@ -96,7 +96,7 @@ uint8_t get_best_result(int results[256])
 
 uint8_t probe(uint8_t* target)
 {
-    int results[256];
+    int results[PAGE_NUM];
     memset(results, 0, sizeof(results));
     
     for (int tries = 0; tries < 300; tries++)
