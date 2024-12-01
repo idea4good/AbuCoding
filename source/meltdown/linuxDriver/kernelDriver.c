@@ -3,13 +3,13 @@
 #include <linux/init.h>
 
 #define DRIVER_AUTHOR "Your Name <your.email@example.com>"
-#define DRIVER_DESC   "A simple module to print a variable's address"
+#define DRIVER_DESC   "A simple module to print a kernel variable's address"
 
 // Initialization function
 static int __init hello_init(void) {
-    static int my_var = 42;
+    static unsigned char secret = 137;
     printk(KERN_INFO "Hello, World!\n");
-    printk(KERN_INFO "Address of my_var: %p\n", (void *)&my_var);
+    printk(KERN_INFO "Address of the secret: %p\n", (void *)&secret);
     return 0;  // Non-zero return means that the module couldn't be loaded.
 }
 

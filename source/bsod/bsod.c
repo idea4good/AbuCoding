@@ -1,6 +1,8 @@
 //cl.exe bsod.c ntoskrnl.lib /I .\ /link /out:bsod.sys /subsystem:native /driver:wdm -entry:DriverEntry
 //sc create bsodDriver binpath=%cd%\bsod.sys type=kernel
 //sc start bsodDriver
+//sc stop abuDriver
+//sc delete abuDriver
 
 int func(int input)
 {
