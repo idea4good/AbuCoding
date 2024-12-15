@@ -28,6 +28,7 @@
   </tr>
   <tr>
     <td align="center"><a href="source/prediction.c"><img src="doc/prediction.png" width="200px;"/><br /><sub><b>CPU眼裏的：分支預測</b></sub></a>
+    <td align="center"><a href="source/atomic.c"><img src="doc/atomic.png" width="200px;"/><br /><sub><b>CPU眼裏的：分支預測</b></sub></a>
   </tr>
 </table>
 
