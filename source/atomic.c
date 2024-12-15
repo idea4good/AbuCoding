@@ -4,11 +4,11 @@
 #include <stdio.h>
 
 int a;
-//_Atomic int a; //enable this code to fix race condition
+//_Atomic int a; //uncomment this code to fix race condition
 
 void* sum()
 {
-    for(volatile int i = 0; i < 10000000; i++)
+    for(int i = 0; i < 10000000; i++)
     {
         a++;
     }
