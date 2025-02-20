@@ -82,7 +82,7 @@ uint8_t detect_memory_slow(uint8_t* address)
 	return ret;
 }
 
-uint8_t data[] = "password";
+char data[] = "password";
 
 int main()
 {
@@ -91,14 +91,14 @@ int main()
 	printf("The data: ");
 	for (int i = 0; i < strlen(data); i++)
 	{
-		printf("%c", detect_memory_quick(&data[i]));
+		printf("%c", detect_memory_quick((uint8_t*)&data[i]));
 	}
 	printf("\n");
 
 	printf("The data: ");
 	for (int i = 0; i < strlen(data); i++)
 	{
-		printf("%c", detect_memory_slow(&data[i]));
+		printf("%c", detect_memory_slow((uint8_t*)&data[i]));
 	}
 	printf("\n");
 }

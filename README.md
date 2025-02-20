@@ -17,17 +17,23 @@
 ## 代碼目錄
 <table>
   <tr>
-    <td align="center"><a href="source/syscall.s"><img src="doc/syscall.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：系統調用</b></sub></a>
-    <td align="center"><a href="source/mfence.cpp"><img src="doc/mfence.png" width="200px;"/><br /><sub><b>CPU眼裏的：内存屏障</b></sub></a>
-    <td align="center"><a href="source/setjmp-longjmp.c"><img src="doc/setjmp-longjmp.png" width="200px;"/><br /><sub><b>CPU眼裏的：setjmp/longjmp</b></sub></a>
+    <td align="center"><a href="source/syscall.s"><img src="doc/syscall.jpg" height="150px;"/><br /><sub><b>系統調用</b></sub></a>
+    <td align="center"><a href="source/mfence.cpp"><img src="doc/mfence.png" height="150px;"/><br /><sub><b>内存屏障</b></sub></a>
+    <td align="center"><a href="source/setjmp-longjmp.c"><img src="doc/setjmp-longjmp.png" height="150px;"/><br /><sub><b>setjmp/longjmp</b></sub></a>
   </tr>
   <tr>
-    <td align="center"><a href="source/cache.c"><img src="doc/cache.png" width="200px;"/><br /><sub><b>CPU眼裏的：缓存</b></sub></a>
-    <td align="center"><a href="source/array_overflow.c"><img src="doc/array.jpg" width="200px;"/><br /><sub><b>CPU眼裏的：数组越界</b></sub></a>
-    <td align="center"><a href="source/bsod/bsod.c"><img src="doc/bsod.png" width="200px;"/><br /><sub><b>CPU眼裏的：蓝屏</b></sub></a>
+    <td align="center"><a href="source/cache.c"><img src="doc/cache.png" height="150px;"/><br /><sub><b>缓存</b></sub></a>
+    <td align="center"><a href="source/arrayOverflow.c"><img src="doc/array.jpg" height="150px;"/><br /><sub><b>数组越界</b></sub></a>
+    <td align="center"><a href="source/bsod/bsod.c"><img src="doc/bsod.png" height="150px;"/><br /><sub><b>蓝屏</b></sub></a>
   </tr>
   <tr>
-    <td align="center"><a href="source/prediction.c"><img src="doc/prediction.png" width="200px;"/><br /><sub><b>CPU眼裏的：分支預測</b></sub></a>
+    <td align="center"><a href="source/prediction.c"><img src="doc/prediction.png" height="150px;"/><br /><sub><b>Atomic</b></sub></a>
+    <td align="center"><a href="source/atomic.c"><img src="doc/atomic.png" height="150px;"/><br /><sub><b>分支預測</b></sub></a>
+    <td align="center"><a href="source/shellcode/injectShellcode.c"><img src="doc/shellcode.png" height="150px;"/><br /><sub><b>Shellcode</b></sub></a>
+  </tr>
+  <tr>
+    <td align="center"><a href="source/arrayOverflow.c"><img src="doc/overflow.png" height="150px;"/><br /><sub><b>数组越界</b></sub></a>
+    <td align="center"><a href="source/canary.c"><img src="doc/canary.png" height="150px;"/><br /><sub><b>堆栈里的金丝雀</b></sub></a>
   </tr>
 </table>
 
@@ -39,6 +45,8 @@
     <td align="center"><img src="doc/cover-b.jpg" width="400px;"/>
   </tr>
 </table>
+
+购买链接：https://item.jd.com/14135576.html
 
 掃描二維碼，5折購買或0元試讀電子版
 ![QR code](/doc/buy.png)
