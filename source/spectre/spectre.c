@@ -114,7 +114,7 @@ uint8_t probe(uint8_t* target)
     return get_best_result(results);
 }
 
-char *secret = "Hello, Abu Coding";
+char *secret = "Hello";
 
 int main()
 {
@@ -122,7 +122,7 @@ int main()
 
     int len = strlen(secret);
 
-    printf("secret = ");//sleep(1);
+    printf("secret = ");
     
     for(int i = 0; i < len; i++)
     {
