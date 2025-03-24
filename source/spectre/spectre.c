@@ -122,11 +122,11 @@ int main()
 
     int len = strlen(secret);
 
-    printf("secret = ");
+    printf("secret = ");//sleep(1);
     
     for(int i = 0; i < len; i++)
     {
-        printf("%c", probe(secret++));
+        printf("%c", probe(&secret[i]));
     }
     printf("\n");
 }
