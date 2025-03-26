@@ -28,7 +28,7 @@
   </tr>
   <tr>
     <td align="center"><a href="source/prediction.c"><img src="doc/prediction.png" height="150px;"/><br /><sub><b>Atomic</b></sub></a>
-    <td align="center"><a href="source/spectre/spectre.c"><img src="doc/spectre.png" height="150px;"/><br /><sub><b>Shellcode</b></sub></a>
+    <td align="center"><a href="source/spectre/spectre.c"><img src="doc/spectre.png" height="150px;"/><br /><sub><b>Spectre</b></sub></a>
     <td align="center"><a href="source/atomic.c"><img src="doc/atomic.png" height="150px;"/><br /><sub><b>分支預測</b></sub></a>
   </tr>
   <tr>
