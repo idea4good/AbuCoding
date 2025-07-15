@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <tlhelp32.h>
+#include <stdio.h>
 
 HANDLE searchProcess(PCHAR ProcessName)
 {
