@@ -26,14 +26,14 @@ char DllPath[MAX_PATH];
 
 int main()
 {
-	HANDLE handle = searchProcess("Notepad.exe");
+	HANDLE hProcess = searchProcess("Notepad.exe");
 
     GetCurrentDirectoryA(MAX_PATH, DllPath);
     strcat(DllPath, "\\dll.dll");
     
-	LPVOID remoteMemory = VirtualAllocEx(handle, 0, strlen(DllPath) + 1, MEM_COMMIT, PAGE_READWRITE);
-	WriteProcessMemory(handle, remoteMemory, (LPVOID)DllPath, strlen(DllPath) + 1, 0);
+	LPVOID remoteMemory = VirtualAllocEx(hProcess, 0, strlen(DllPath) + 1, MEM_COMMIT, PAGE_READWRITE);
+	WriteProcessMemory(hProcess, remoteMemory, (LPVOID)DllPath, strlen(DllPath) + 1, 0);
 
     LPTHREAD_START_ROUTINE remoteTask = (LPTHREAD_START_ROUTINE)GetProcAddress(GetModuleHandleA("Kernel32.dll"), "LoadLibraryA");
-	HANDLE hLoadThread = CreateRemoteThread(handle, 0, 0, remoteTask, remoteMemory, 0, 0);
+	HANDLE hLoadThread = CreateRemoteThread(hProcess, 0, 0, remoteTask, remoteMemory, 0, 0);
 }
