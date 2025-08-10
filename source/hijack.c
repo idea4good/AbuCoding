@@ -1,13 +1,11 @@
 // cl /nologo hijack.c user32.lib
-// double checkout the address of MessageBoxA, correct the address in line 52 if needed.
 
 #include <Windows.h>
 #include <tlhelp32.h>
 #include <stdio.h>
 
-typedef int (WINAPI *MessageBoxAFunc)(HWND, LPCSTR, LPCSTR, UINT);
-MessageBoxAFunc msgFunc;
-DWORD64 returnAddress;
+#define MessageFuncAddress 0x00007FFE6E19D230
+typedef int (WINAPI *MessageFunc)(HWND, LPCSTR, LPCSTR, UINT);
 
 DWORD searchProcessID(PCHAR ProcessName)
 {
@@ -17,7 +15,7 @@ DWORD searchProcessID(PCHAR ProcessName)
     if (Process32First(hSnapshot, &pe)) {
         do {
             if (strcmp(pe.szExeFile, ProcessName) == 0) {
-                printf("%s found\n", pe.szExeFile);
+                printf("✅ %s found, processID = %d\n", pe.szExeFile, pe.th32ProcessID);
                 return pe.th32ProcessID;
             }
         } while (Process32Next(hSnapshot, &pe));
@@ -29,13 +27,10 @@ DWORD searchProcessID(PCHAR ProcessName)
 
 HANDLE EnumThread(DWORD pid)
 {
+	THREADENTRY32 te = { .dwSize = sizeof(THREADENTRY32) };
 	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
 
-	THREADENTRY32 te;
-	te.dwSize = sizeof(te);
-
 	Thread32First(hSnapshot, &te);
-
 	while(Thread32Next(hSnapshot, &te))
 	{
 		if(te.th32OwnerProcessID == pid)
@@ -44,13 +39,14 @@ HANDLE EnumThread(DWORD pid)
 		}
 	}
 
+	CloseHandle(hSnapshot);
 	return 0;
 }
 
-void yourCode()
-{
-	MessageBoxAFunc msgFunc = (MessageBoxAFunc)0x00007FF9D088D230;//Do not call or reference MessageBoxA, as it uses a relative address.
-	msgFunc(NULL, 0, 0, MB_OK | MB_ICONINFORMATION);
+void yourCode(BYTE* yourCodeAddress)
+{// yourCodeAddress comes from CPU register: rcx.
+	MessageFunc msgFunc = (MessageFunc)MessageFuncAddress;//Don’t call or reference MessageBoxA directly—it uses a relative address, which doesn’t work well across processes.
+	msgFunc(NULL, yourCodeAddress + 0x200, yourCodeAddress + 0x100, MB_OK | MB_ICONINFORMATION);
 	while(1);
 }
 
@@ -58,12 +54,11 @@ void hijackRemoteThread(HANDLE remoteThread, LPVOID codeAddress)
 {
 	SuspendThread(remoteThread);
 
-	CONTEXT ctx;
-	ctx.ContextFlags = CONTEXT_CONTROL;
+	CONTEXT ctx = { .ContextFlags = CONTEXT_CONTROL };
 	GetThreadContext(remoteThread, &ctx);
-	returnAddress = ctx.Rip;
 	
-	ctx.Rip = (DWORD64)codeAddress;
+	ctx.Rip = (DWORD64)codeAddress; // The address of the function yourCode.
+	ctx.Rcx = (DWORD64)codeAddress; // The argument[yourCodeAddress] of the function yourCode.
 	SetThreadContext(remoteThread, &ctx);
 
 	ResumeThread(remoteThread);
@@ -72,18 +67,29 @@ void hijackRemoteThread(HANDLE remoteThread, LPVOID codeAddress)
 int main()
 {
 	DWORD processID = searchProcessID("Notepad.exe");
-	HANDLE hThread = EnumThread(processID);
-	HANDLE hProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, FALSE, processID);
-	LPVOID remoteMemory = VirtualAllocEx(hProcess, 0, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-
-	if(!remoteMemory || !hThread)
+	if(!processID)
 	{
-		printf("Error: failed to open thread or allocate memory.\n");
+		printf("❌ Notepad.exe not found!\n🚀 Run Notepad.exe first\n");
 		return -1;
 	}
 
-	printf("address of MessageBoxA = %p\n", MessageBoxA);
+	if(MessageBoxA != (MessageFunc)MessageFuncAddress)
+	{
+		printf("❌ Change MessageFuncAddress[line 7] to = 0x%p\n", MessageBoxA);
+		return -2;
+	}
 
-	WriteProcessMemory(hProcess, remoteMemory, (LPVOID)yourCode, 0x100, 0);
+	HANDLE hThread = EnumThread(processID);
+	HANDLE hProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, FALSE, processID);
+	BYTE* remoteMemory = VirtualAllocEx(hProcess, 0, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	if(!remoteMemory || !hThread)
+	{
+		printf("❌ failed to open thread or allocate memory.\n");
+		return -1;
+	}
+
+	WriteProcessMemory(hProcess, remoteMemory, yourCode, 0x100, 0);
+	WriteProcessMemory(hProcess, remoteMemory + 0x100, "AbuCoding", 0x100, 0);
+	WriteProcessMemory(hProcess, remoteMemory + 0x200, "Hello from hijacker", 0x100, 0);
 	hijackRemoteThread(hThread, remoteMemory);
 }
