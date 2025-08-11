@@ -86,7 +86,7 @@ int main()
 	if(!remoteMemory || !hTargetThread)
 	{
 		printf("❌ failed to open thread or allocate memory.\n");
-		return -1;
+		return -3;
 	}
 
 	WriteProcessMemory(hTargetProcess, remoteMemory, yourCode, 0x100, 0);
