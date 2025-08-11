@@ -4,7 +4,7 @@
 #include <tlhelp32.h>
 #include <stdio.h>
 
-#define MessageFuncAddress 0x00007FFE6E19D230
+#define MessageFuncAddress 0x00007FF8178CD230
 typedef int (WINAPI *MessageFunc)(HWND, LPCSTR, LPCSTR, UINT);
 
 DWORD searchProcessID(PCHAR ProcessName)
@@ -66,30 +66,31 @@ void hijackRemoteThread(HANDLE remoteThread, LPVOID codeAddress)
 
 int main()
 {
-	DWORD processID = searchProcessID("Notepad.exe");
-	if(!processID)
-	{
-		printf("❌ Notepad.exe not found!\n🚀 Run Notepad.exe first\n");
-		return -1;
-	}
-
 	if(MessageBoxA != (MessageFunc)MessageFuncAddress)
 	{
 		printf("❌ Change MessageFuncAddress[line 7] to = 0x%p\n", MessageBoxA);
+		return -1;
+	}
+
+	DWORD targetProcessID = searchProcessID("Notepad.exe");
+	if(!targetProcessID)
+	{
+		printf("❌ Notepad.exe not found!\n🚀 Run Notepad.exe first\n");
 		return -2;
 	}
 
-	HANDLE hThread = EnumThread(processID);
-	HANDLE hProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, FALSE, processID);
-	BYTE* remoteMemory = VirtualAllocEx(hProcess, 0, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	if(!remoteMemory || !hThread)
+	HANDLE hTargetProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, FALSE, targetProcessID);
+	BYTE* remoteMemory = VirtualAllocEx(hTargetProcess, 0, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	
+	HANDLE hTargetThread = EnumThread(targetProcessID);
+	if(!remoteMemory || !hTargetThread)
 	{
 		printf("❌ failed to open thread or allocate memory.\n");
 		return -1;
 	}
 
-	WriteProcessMemory(hProcess, remoteMemory, yourCode, 0x100, 0);
-	WriteProcessMemory(hProcess, remoteMemory + 0x100, "AbuCoding", 0x100, 0);
-	WriteProcessMemory(hProcess, remoteMemory + 0x200, "Hello from hijacker", 0x100, 0);
-	hijackRemoteThread(hThread, remoteMemory);
+	WriteProcessMemory(hTargetProcess, remoteMemory, yourCode, 0x100, 0);
+	WriteProcessMemory(hTargetProcess, remoteMemory + 0x100, "AbuCoding", 0x100, 0);
+	WriteProcessMemory(hTargetProcess, remoteMemory + 0x200, "Hello from hijacker", 0x100, 0);
+	hijackRemoteThread(hTargetThread, remoteMemory);
 }
