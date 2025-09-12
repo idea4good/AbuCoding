@@ -21,8 +21,8 @@ DWORD searchProcessID(PCHAR ProcessName)
 
     if (Process32First(hSnapshot, &pe)) {
         do {
-            if (strcmp(pe.szExeFile, ProcessName) == 0) {
-                printf("✅ %s found, processID = %d\n", pe.szExeFile, pe.th32ProcessID);
+            if (strcmp(pe.szExeFile, ProcessName) == 0)
+			{
                 return pe.th32ProcessID;
             }
         } while (Process32Next(hSnapshot, &pe));
@@ -58,7 +58,6 @@ HANDLE pinThread(DWORD pid, DWORD tid, DWORD affinityMask)
 	{
 		if(te.th32OwnerProcessID == pid && (te.th32ThreadID == tid || 0 == tid))
 		{
-			printf("✅ Thread  %lu found\n", te.th32ThreadID);
 			found = TRUE;
 
 			HANDLE hTargetThread = OpenThread(THREAD_SET_INFORMATION | THREAD_QUERY_INFORMATION, FALSE, te.th32ThreadID);
@@ -92,7 +91,7 @@ HANDLE pinThread(DWORD pid, DWORD tid, DWORD affinityMask)
 
 	if(!found)
 	{
-		printf("❌ Thread %lu not found, check the parameter first\n", tid);
+		printf("❌ Thread %lu not found, check the parameter please\n", tid);
 	}
 
 	CloseHandle(hSnapshot);
@@ -101,21 +100,25 @@ HANDLE pinThread(DWORD pid, DWORD tid, DWORD affinityMask)
 
 int main(int argc, char *argv[])
 {
-	if(argc != 4 && argc != 3)
+	if(argc < 2 || argc > 4)
 	{
-		printf ("❌ Invalid parameters!\nUsage: ThreadPin.exe <ProcessName> <ThreadId> [Affinity]\nThreadId = 0 -> Apply to all threads\nExample: ThreadPin.exe Notepad.exe 1234 0xF");
+		printf ("❌ Invalid parameters!\nUsage: ThreadPin.exe <ProcessName> [ThreadId] [Affinity]\nExample: ThreadPin.exe Notepad.exe 1234 0xF");
 		return -1;
 	}
 
 	DWORD targetProcessID = searchProcessID(argv[1]);
 	if(!targetProcessID)
 	{
-		printf("❌ %s not found!\n🚀 Run it first\n", argv[1]);
+		printf("❌ Application %s not found!\n🚀 Run it first\n", argv[1]);
 		return -2;
 	}
 
 	char *endptr;
-	DWORD targetThreadID = strtol(argv[2], &endptr, 0);
+	DWORD targetThreadID = 0;
+	if(argc >= 3)
+	{
+		targetThreadID = strtol(argv[2], &endptr, 0);
+	}
 
 	DWORD affinityMask = 0;
 	if(argc == 4)

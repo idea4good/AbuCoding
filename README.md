@@ -42,6 +42,7 @@
 
   <tr>
     <td align="center"><a href="source/DLL-inject/loader.c"><img src="doc/DLL.png" height="150px;"/><br /><sub><b>DLL 远程注入</b></sub></a>
+    <td align="center"><a href="source/hijack.c"><img src="doc/hijack.png" height="150px;"/><br /><sub><b>线程劫持</b></sub></a>
   </tr>
 </table>
 
