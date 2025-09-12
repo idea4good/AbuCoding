@@ -32,25 +32,6 @@ DWORD searchProcessID(PCHAR ProcessName)
     return 0;
 }
 
-HANDLE EnumThread(DWORD pid, DWORD tid)
-{
-	THREADENTRY32 te = { .dwSize = sizeof(THREADENTRY32) };
-	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-
-	Thread32First(hSnapshot, &te);
-	while(Thread32Next(hSnapshot, &te))
-	{
-		if(te.th32OwnerProcessID == pid && te.th32ThreadID == tid)
-		{
-			printf("✅ the thread found\n");
-			return OpenThread(THREAD_SET_INFORMATION | THREAD_QUERY_INFORMATION, FALSE, te.th32ThreadID);
-		}
-	}
-
-	CloseHandle(hSnapshot);
-	return 0;
-}
-
 void printThreadInfo(HANDLE hThread)
 {
     THREAD_BASIC_INFORMATION tbi;
@@ -58,19 +39,71 @@ void printThreadInfo(HANDLE hThread)
 
     if (NtQueryInformationThread(hThread, 0, &tbi, sizeof(tbi), &retLen) == 0) 
     {
-        printf("✅ Process ID: 0x%llX | Thread ID: 0x%llX | Affinity Mask: 0x%llX | Priority: %ld\n", (unsigned long long)tbi.ClientId.UniqueProcess, (unsigned long long)tbi.ClientId.UniqueThread, (unsigned long long)tbi.AffinityMask, tbi.Priority);
+        printf("✅ Process ID: %llu | Thread ID: %llu | Affinity: 0x%llX | Priority: %ld\n", (unsigned long long)tbi.ClientId.UniqueProcess, (unsigned long long)tbi.ClientId.UniqueThread, (unsigned long long)tbi.AffinityMask, tbi.Priority);
     }
     else
     {
-        printf("NtQueryInformationThread failed with error: 0x%X\n", GetLastError());
+        printf("❌ NtQueryInformationThread failed with error: 0x%X\n", GetLastError());
     }
+}
+
+HANDLE pinThread(DWORD pid, DWORD tid, DWORD affinityMask)
+{
+	THREADENTRY32 te = { .dwSize = sizeof(THREADENTRY32) };
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+
+	BOOL found = FALSE;
+	Thread32First(hSnapshot, &te);
+	while(Thread32Next(hSnapshot, &te))
+	{
+		if(te.th32OwnerProcessID == pid && (te.th32ThreadID == tid || 0 == tid))
+		{
+			printf("✅ Thread  %lu found\n", te.th32ThreadID);
+			found = TRUE;
+
+			HANDLE hTargetThread = OpenThread(THREAD_SET_INFORMATION | THREAD_QUERY_INFORMATION, FALSE, te.th32ThreadID);
+			if(0 == hTargetThread)
+			{
+				printf("❌ OpenThread failed! thread ID = %lu, error = %lu\n", te.th32ThreadID, GetLastError());
+				continue;
+			}
+
+			if(0 == affinityMask)
+			{
+				printThreadInfo(hTargetThread);
+				continue;
+			}
+
+			if(0 == SetThreadAffinityMask(hTargetThread, affinityMask))
+			{
+				printf("❌ SetThreadAffinityMask failed! thread ID = %lu, error = %lu\n", te.th32ThreadID, GetLastError());
+			}
+			else
+			{
+				printf("✅ SetThreadAffinityMask succeed! thread ID = %lu\n", te.th32ThreadID);
+			}
+
+			if(0 != tid)
+			{
+				break;
+			}
+		}
+	}
+
+	if(!found)
+	{
+		printf("❌ Thread %lu not found, check the parameter first\n", tid);
+	}
+
+	CloseHandle(hSnapshot);
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
 	if(argc != 4 && argc != 3)
 	{
-		printf ("❌ Invalid parameters!\nUsage: ThreadPin.exe <ProcessName> <ThreadId> [AffinityMask]\nExample: ThreadPin.exe Notepad.exe 0x1234 0xF");
+		printf ("❌ Invalid parameters!\nUsage: ThreadPin.exe <ProcessName> <ThreadId> [Affinity]\nThreadId = 0 -> Apply to all threads\nExample: ThreadPin.exe Notepad.exe 1234 0xF");
 		return -1;
 	}
 
@@ -83,26 +116,12 @@ int main(int argc, char *argv[])
 
 	char *endptr;
 	DWORD targetThreadID = strtol(argv[2], &endptr, 0);
-	HANDLE hTargetThread = EnumThread(targetProcessID, targetThreadID);
-	if(!hTargetThread)
+
+	DWORD affinityMask = 0;
+	if(argc == 4)
 	{
-		printf("❌ Get thread Handle failed\n");
-		return -3;
+		affinityMask = strtol(argv[3], &endptr, 0);
 	}
 
-	if(argc == 3)
-	{
-		printThreadInfo(hTargetThread);
-		return 0;
-	}
-
-	DWORD AffinityMask = strtol(argv[3], &endptr, 0);
-	if(0 == SetThreadAffinityMask(hTargetThread, AffinityMask))
-	{
-		printf("❌ SetThreadAffinityMask failed: %lu\n",  GetLastError());
-	}
-	else
-	{
-		printf("✅ SetThreadAffinityMask succeed\n");
-	}
+	pinThread(targetProcessID, targetThreadID, affinityMask);
 }
