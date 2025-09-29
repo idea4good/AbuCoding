@@ -59,7 +59,7 @@ bool InitD3D() {
     scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     scd.BufferCount = 1;
     scd.OutputWindow = g_hWnd;
-    scd.Windowed = TRUE;
+    scd.Windowed = FALSE; // 全屏
     scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
     if (FAILED(D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE,
@@ -132,14 +132,12 @@ bool InitTriangle() {
     return true;
 }
 
-void Render() {
+void Render(bool isRenderEnabled) {
     static float angle = 0.0f;
     angle += 0.01f; // 每帧旋转一点
-
     XMMATRIX rotation = XMMatrixRotationZ(angle);
     ConstantBuffer cb;
     cb.transform = XMMatrixTranspose(rotation); // 转置以匹配 HLSL 行主序
-
     g_context->UpdateSubresource(g_constantBuffer, 0, nullptr, &cb, 0, 0);
     g_context->VSSetConstantBuffers(0, 1, &g_constantBuffer);
 
@@ -154,19 +152,7 @@ void Render() {
     g_context->PSSetShader(g_ps, nullptr, 0);
     g_context->Draw(3, 0);
 
-    g_swapChain->Present(1, 0);
-}
-
-void Cleanup() {
-    if (g_layout) g_layout->Release();
-    if (g_vs) g_vs->Release();
-    if (g_ps) g_ps->Release();
-    if (g_vertexBuffer) g_vertexBuffer->Release();
-    if (g_rtv) g_rtv->Release();
-    if (g_swapChain) g_swapChain->Release();
-    if (g_context) g_context->Release();
-    if (g_device) g_device->Release();
-    if (g_constantBuffer) g_constantBuffer->Release();
+    if(isRenderEnabled) { g_swapChain->Present(1, 0); }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
@@ -174,16 +160,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     if (!InitD3D()) return -1;
     if (!InitTriangle()) return -1;
 
+    bool isRenderEnabled = true;
     MSG msg = {};
     while (msg.message != WM_QUIT) {
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        Render();
-        Sleep(20);
-    }
 
-    Cleanup();
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            PostQuitMessage(0);
+        }
+
+        if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+            isRenderEnabled = !isRenderEnabled;
+        }
+
+        Render(isRenderEnabled);        
+        Sleep(16);
+    }
     return 0;
 }
