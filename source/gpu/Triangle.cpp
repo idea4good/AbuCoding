@@ -1,4 +1,4 @@
-// cl Triangle.cpp user32.lib
+// cl Triangle.cpp
 
 #include <windows.h>
 #include <d3d11.h>
