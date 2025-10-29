@@ -1,6 +1,8 @@
 // cl.exe /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\km" /c /Zl /GS- /kernel /D "_AMD64_" /D "NTDDI_VERSION=0x0A00000C" /D "_WIN32_WINNT=0x0A00" etwDriver.c
 // link.exe /SUBSYSTEM:NATIVE /DRIVER /NODEFAULTLIB /ENTRY:DriverEntry /OUT:etwDriver.sys etwDriver.obj ntoskrnl.lib
 
+// traceview(realtime trace): file -> create new log session -> add provider -> input GUID(46175A05-20F9-4D43-9853-FE291E654A6F)
+
 //sc create etwDriver binpath=%cd%\etwDriver.sys type=kernel
 //sc start etwDriver
 //sc stop etwDriver
