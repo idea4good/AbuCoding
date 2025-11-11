@@ -8,42 +8,77 @@
 //sc stop etwDriver
 //sc delete etwDriver
 
-#include "ntddk.h"
-#include <TraceLoggingProvider.h>
+#include <ntddk.h>
 
-TRACELOGGING_DEFINE_PROVIDER(
-    g_hProvider,
-    "abuEtwProvider", // Provider name
-    // Generate your own GUID with uuidgen.exe or guidgen.exe
-    (0x46175A05, 0x20F9, 0x4D43, 0x98, 0x53, 0xFE, 0x29, 0x1E, 0x65, 0x4A, 0x6F)
-);
+static const GUID MyProviderGuid =
+{ 0x46175A05, 0x20F9, 0x4D43, { 0x98, 0x53, 0xFE, 0x29, 0x1E, 0x65, 0x4A, 0x6F } };
 
+
+// 全局 ETW 注册句柄
+REGHANDLE g_EtwRegHandle = 0;
+
+// 驱动卸载函数
 VOID DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 {
     UNREFERENCED_PARAMETER(DriverObject);
 
-    TraceLoggingWrite(
-        g_hProvider,
-        "DriverUnload",
-        TraceLoggingString("Driver is unloading", "Message"));
+    if (g_EtwRegHandle != 0) {
+        EtwUnregister(g_EtwRegHandle);
+        g_EtwRegHandle = 0;
+    }
 
-    TraceLoggingUnregister(g_hProvider);
+    DbgPrint("MyDriver: Unloaded and ETW unregistered.\n");
 }
 
-NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath)
+// 驱动入口函数
+NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject,
+                     _In_ PUNICODE_STRING RegistryPath)
 {
     UNREFERENCED_PARAMETER(RegistryPath);
 
-    // Register the provider
-    TraceLoggingRegister(g_hProvider);
-
-    // Emit an event
-    TraceLoggingWrite(
-        g_hProvider,
-        "DriverEntry",
-        TraceLoggingString("Driver loaded successfully", "Message"),
-        TraceLoggingInt32(123, "InitValue"));
-
     DriverObject->DriverUnload = DriverUnload;
+
+    NTSTATUS status = EtwRegister(
+        &MyProviderGuid,   // Provider GUID
+        NULL,              // 可选回调函数
+        NULL,              // Context
+        &g_EtwRegHandle    // 返回的句柄
+    );
+
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("MyDriver: EtwRegister failed (0x%x)\n", status);
+        return status;
+    }
+
+    // 定义事件描述符（事件 ID = 1，级别 = 信息）
+    EVENT_DESCRIPTOR eventDesc = {0};
+    eventDesc.Id = 1;
+    eventDesc.Version = 0;
+    eventDesc.Channel = 0;
+    eventDesc.Level = 1;//TRACE_LEVEL_INFORMATION;
+    eventDesc.Opcode = 0;
+    eventDesc.Task = 0;
+    eventDesc.Keyword = 0;
+
+    // 准备事件数据
+    const char* message = "Hello from EtwWrite!";
+    EVENT_DATA_DESCRIPTOR dataDesc;
+    EventDataDescCreate(&dataDesc, message, (ULONG)strlen(message) + 1);
+
+    // 写入事件
+    status = EtwWrite(
+        g_EtwRegHandle,
+        &eventDesc,        // 事件描述符
+        NULL,              // ActivityId（可为 NULL）
+        1,                 // 数据项数量
+        &dataDesc          // 数据项数组
+    );
+
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("MyDriver: EtwWrite failed (0x%x)\n", status);
+    } else {
+        DbgPrint("MyDriver: ETW event written successfully.\n");
+    }
+
     return STATUS_SUCCESS;
 }
