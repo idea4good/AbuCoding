@@ -3,13 +3,17 @@
 // .\time.ps1 -exepath .\falseSharing.exe
 
 /*
-Test on the same cluster: 
-CPU 0 + CPU1 | same cache line = 5.9s
-CPU 0 + CPU1 | cross cache line = 4.9s
+the same cluster: 
+CPU 0 + CPU1 | false sharing: 5.9s
+CPU 0 + CPU1 | cache-line isolated: 4.9s
 
-Test on cross-clusters: 
-CPU 0 + CPU6 | same cache line = 5.7s
-CPU 0 + CPU6 | cross cache line = 5.2s
+cross-clusters: 
+CPU 0 + CPU6 | same cache line: 5.7s
+CPU 0 + CPU6 | cache-line isolated: 5.2s
+
+single-core
+false sharing: 9.2s
+cache-line isolated: 9.2s
 */
 
 #include <windows.h>
