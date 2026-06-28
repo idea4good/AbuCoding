@@ -43,6 +43,11 @@
   <tr>
     <td align="center"><a href="source/DLL-inject/loader.c"><img src="doc/DLL.png" height="150px;"/><br /><sub><b>DLL 远程注入</b></sub></a>
     <td align="center"><a href="source/hijack.c"><img src="doc/hijack.png" height="150px;"/><br /><sub><b>线程劫持</b></sub></a>
+    <td align="center"><a href="source/outOfOrder.cpp"><img src="doc/outOfOrder.png" height="150px;"/><br /><sub><b>乱序执行</b></sub></a>
+  </tr>
+
+  <tr>
+    <td align="center"><a href="source/falseSharing/falseSharing.c"><img src="doc/falseSharing.png" height="150px;"/><br /><sub><b>DLL 缓存风暴</b></sub></a>
   </tr>
 </table>
 
@@ -51,14 +56,13 @@
 <table>
   <tr>
     <td align="center"><img src="doc/cover-a.jpg" width="400px;"/>
-    <td align="center"><img src="doc/cover-b.jpg" width="400px;"/>
+    <td align="center"><img src="doc/cover-b.png" width="400px;"/>
   </tr>
 </table>
 
-购买链接：https://item.jd.com/14135576.html
-
-掃描二維碼，5折購買或0元試讀電子版
-![QR code](/doc/buy.png)
+## 官方特惠(5.5折)
+购买链接：https://item.jd.com/14704977.html
+![QR code](/doc/buy.jpg)
 
 ## 📞社區交流
 - 視頻的圖、文版本，可以在：《阿布編程》的公衆號中閲讀
