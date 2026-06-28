@@ -47,7 +47,7 @@
   </tr>
 
   <tr>
-    <td align="center"><a href="source/falseSharing/falseSharing.c"><img src="doc/falseSharing.png" height="150px;"/><br /><sub><b>DLL 缓存风暴</b></sub></a>
+    <td align="center"><a href="source/falseSharing/falseSharing.c"><img src="doc/falseSharing.png" height="150px;"/><br /><sub><b>缓存风暴</b></sub></a>
   </tr>
 </table>
 
