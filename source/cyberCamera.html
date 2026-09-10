@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Camera Preview &amp; Recorder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f13;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 1.4rem; letter-spacing: 2px; color: #7eb3ff; margin-bottom: 18px; text-transform: uppercase; }
+
+  /* ── Three-panel grid ─────────────────────────────────────── */
+  .panels {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 1440px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1 1 320px;
+    max-width: 480px;
+    min-width: 200px;
+  }
+  .panel-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #7eb3ff;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .viewport-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* default 16:9; updated dynamically */
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid #2a2a3e;
+    background: #000;
+  }
+  .viewport-wrap video,
+  .viewport-wrap canvas,
+  .viewport-wrap .ascii-pre {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1;
+    background: #000;
+    color: #0f0;
+    white-space: pre;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    letter-spacing: 0;
+    word-spacing: 0;
+  }
+  .viewport-wrap video,
+  .viewport-wrap canvas {
+    display: block;
+    object-fit: cover;
+  }
+  .ascii-pre .ascii-char {
+    display: inline-block;
+    width: 1ch;
+    height: 1em;
+  }
+  /* ascii-pre styles merged above */
+  .rec-dot {
+    position: absolute; top: 10px; right: 12px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #ff4444; display: none;
+    box-shadow: 0 0 6px #ff4444;
+    animation: blink 1s step-start infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── Pixel size slider under pixel panel ─────────────────── */
+  .slider-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px; font-size: 0.8rem; color: #aaa;
+  }
+  input[type=range] { accent-color: #7eb3ff; width: 120px; }
+
+  /* ── Controls ─────────────────────────────────────────────── */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; justify-content: center; }
+  button {
+    padding: 9px 22px; border-radius: 8px; border: none;
+    font-size: 0.88rem; cursor: pointer; font-weight: 600; transition: opacity .2s;
+  }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-start  { background: #4caf50; color: #fff; }
+  .btn-stop   { background: #e53935; color: #fff; }
+  .btn-camera { background: #2196f3; color: #fff; }
+  .btn-snap   { background: #ff9800; color: #fff; }
+
+  /* ── Recording target selector ───────────────────────────── */
+  .rec-target-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 12px; font-size: 0.82rem; color: #aaa;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .rec-target-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .rec-target-row input[type=radio] { accent-color: #7eb3ff; }
+
+  /* ── Downloads ────────────────────────────────────────────── */
+  .downloads { margin-top: 20px; width: 100%; max-width: 960px; }
+  .downloads h3 { font-size: 0.9rem; color: #7eb3ff; margin-bottom: 10px; letter-spacing: 1px; }
+  .dl-list { display: flex; flex-direction: column; gap: 8px; }
+  .dl-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #1a1a28; border: 1px solid #2a2a3e;
+    border-radius: 8px; padding: 8px 14px; font-size: 0.83rem;
+  }
+  .dl-item span { color: #aaa; }
+  .dl-item a {
+    color: #7eb3ff; text-decoration: none; font-weight: 600;
+    padding: 4px 12px; border: 1px solid #7eb3ff; border-radius: 6px;
+  }
+  .dl-item a:hover { background: #7eb3ff22; }
+  .status { margin-top: 12px; font-size: 0.8rem; color: #666; min-height: 18px; }
+</style>
+</head>
+<body>
+<h1>📷 Camera Preview &amp; Recorder</h1>
+
+<!-- ── Three panels ─────────────────────────────────────────── -->
+<div class="panels">
+
+  <!-- Normal -->
+  <div class="panel">
+    <div class="panel-label">🎥 Normal</div>
+    <div class="viewport-wrap" id="vpNormal">
+      <video id="rawVideo" autoplay playsinline muted></video>
+      <div class="rec-dot" id="recDotNormal"></div>
+    </div>
+  </div>
+
+  <!-- Pixel -->
+  <div class="panel">
+    <div class="panel-label">🟦 Pixel</div>
+    <div class="viewport-wrap" id="vpPixel">
+      <canvas id="pixelCanvas"></canvas>
+      <div class="rec-dot" id="recDotPixel"></div>
+    </div>
+    <div class="slider-row">
+      <span>Block:</span>
+      <input type="range" id="pixelSize" min="4" max="40" value="10">
+      <span id="pixelSizeVal">10 px</span>
+    </div>
+  </div>
+
+  <!-- ASCII -->
+  <div class="panel">
+    <div class="panel-label">🔡 ASCII</div>
+    <div class="viewport-wrap" id="vpAscii">
+      <pre class="ascii-pre" id="asciiPre"></pre>
+      <div class="rec-dot" id="recDotAscii"></div>
+    </div>
+    <div class="slider-row" style="gap:14px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#aaa;">
+        FG <input type="color" id="asciiFg" value="#00ff00" title="ASCII text color">
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#aaa;">
+        <input type="checkbox" id="asciiRgb" checked title="Color each ASCII character from the source pixel"> RGB
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#aaa;">
+        BG <input type="color" id="asciiBg" value="#000000" title="ASCII background color">
+      </label>
+      <button onclick="resetAsciiColors()" style="padding:3px 10px;font-size:0.75rem;background:#2a2a3e;color:#aaa;border:1px solid #444;border-radius:6px;cursor:pointer;">Reset</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Recording target ──────────────────────────────────────── -->
+<div class="rec-target-row">
+  <span>Record from:</span>
+  <label><input type="radio" name="recTarget" value="normal" checked> Normal</label>
+  <label><input type="radio" name="recTarget" value="pixel"> Pixel</label>
+  <label><input type="radio" name="recTarget" value="ascii"> ASCII (raw stream)</label>
+</div>
+
+<!-- ── Controls ─────────────────────────────────────────────── -->
+<div class="controls">
+  <button class="btn-camera" id="btnStart"   onclick="startCamera()">&#9654; Start Camera</button>
+  <button class="btn-stop"   id="btnStop"    onclick="stopCamera()"  disabled>&#9632; Stop Camera</button>
+  <button class="btn-start"  id="btnRec"     onclick="startRecord()" disabled>&#9210; Record</button>
+  <button class="btn-stop"   id="btnStopRec" onclick="stopRecord()"  disabled>&#9209; Stop Rec</button>
+  <button class="btn-snap"   id="btnSnap"    onclick="takeSnapshot()" disabled>&#128248; Snapshot All</button>
+</div>
+<div class="status" id="status">Click "Start Camera" to begin.</div>
+
+<!-- Downloads -->
+<div class="downloads">
+  <h3>&#8595; SAVED FILES</h3>
+  <div class="dl-list" id="dlList"><p style="color:#555;font-size:.82rem">No files yet.</p></div>
+</div>
+
+<!-- Hidden shared processing canvas -->
+<canvas id="procCanvas" style="display:none"></canvas>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let stream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let animFrame = null;
+let dlCounter = { video: 0, image: 0 };
+let recordingStartTime = null;
+let recordingTimer = null;
+
+const rawVideo     = document.getElementById('rawVideo');
+const pixelCanvas  = document.getElementById('pixelCanvas');
+const asciiPre     = document.getElementById('asciiPre');
+const procCanvas   = document.getElementById('procCanvas');
+const statusEl     = document.getElementById('status');
+const dlList       = document.getElementById('dlList');
+const pixelSlider  = document.getElementById('pixelSize');
+const pixelValLbl  = document.getElementById('pixelSizeVal');
+
+const pixelCtx     = pixelCanvas.getContext('2d');
+const procCtx      = procCanvas.getContext('2d');
+
+pixelSlider.addEventListener('input', () => {
+  pixelValLbl.textContent = pixelSlider.value + ' px';
+});
+const asciiFgPicker = document.getElementById('asciiFg');
+const asciiBgPicker = document.getElementById('asciiBg');
+const asciiRgbToggle = document.getElementById('asciiRgb');
+function applyAsciiColors() {
+  asciiPre.style.color      = asciiFgPicker.value;
+  asciiPre.style.background = asciiBgPicker.value;
+}
+function resetAsciiColors() {
+  asciiFgPicker.value = '#00ff00';
+  asciiBgPicker.value = '#000000';
+  applyAsciiColors();
+}
+asciiFgPicker.addEventListener('input', applyAsciiColors);
+asciiBgPicker.addEventListener('input', applyAsciiColors);
+asciiRgbToggle.addEventListener('change', () => {
+  if (lastAsciiFrame) renderAscii(lastAsciiFrame.imgData, lastAsciiFrame.W, lastAsciiFrame.H);
+});
+
+// ── Canvas size sync ───────────────────────────────────────────────────────
+function syncCanvasSize(W, H) {
+  [procCanvas, pixelCanvas].forEach(c => {
+    if (c.width !== W)  c.width  = W;
+    if (c.height !== H) c.height = H;
+  });
+}
+
+// ── Camera start/stop ──────────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    rawVideo.srcObject = stream;
+    await rawVideo.play();
+    rawVideo.addEventListener('loadedmetadata', () => {
+      const W = rawVideo.videoWidth, H = rawVideo.videoHeight;
+      syncCanvasSize(W, H);
+      // Update padding-top of all viewport-wraps to match actual video aspect ratio
+      const pct = (H / W * 100).toFixed(4) + '%';
+      document.querySelectorAll('.viewport-wrap').forEach(el => el.style.paddingTop = pct);
+    }, { once: true });
+    setStatus('✅ Camera active.');
+    setBtn('btnStart',   true);
+    setBtn('btnStop',    false);
+    setBtn('btnRec',     false);
+    setBtn('btnSnap',    false);
+    startRenderLoop();
+  } catch(e) {
+    setStatus('❌ Camera error: ' + e.message);
+  }
+}
+
+function stopCamera() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecord();
+  cancelAnimationFrame(animFrame);
+  stream && stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  rawVideo.srcObject = null;
+  setStatus('Camera stopped.');
+  setBtn('btnStart',   false);
+  setBtn('btnStop',    true);
+  setBtn('btnRec',     true);
+  setBtn('btnStopRec', true);
+  setBtn('btnSnap',    true);
+}
+
+// ── Render loop — drives Pixel + ASCII every frame ─────────────────────────
+function startRenderLoop() {
+  function loop() {
+    if (!stream) return;
+    const W = rawVideo.videoWidth, H = rawVideo.videoHeight;
+    if (!W || !H) { animFrame = requestAnimationFrame(loop); return; }
+
+    syncCanvasSize(W, H);
+
+    // Draw full video frame into shared proc canvas
+    procCtx.drawImage(rawVideo, 0, 0, W, H);
+
+    // — Pixel —
+    applyPixelEffect(W, H, parseInt(pixelSlider.value));
+
+    // — ASCII —
+    const imgData = procCtx.getImageData(0, 0, W, H);
+    renderAscii(imgData, W, H);
+
+    animFrame = requestAnimationFrame(loop);
+  }
+  animFrame = requestAnimationFrame(loop);
+}
+
+// ── Effects ────────────────────────────────────────────────────────────────
+function applyPixelEffect(W, H, size) {
+  const bw = Math.max(1, Math.ceil(W / size));
+  const bh = Math.max(1, Math.ceil(H / size));
+  const tmp = document.createElement('canvas');
+  tmp.width = bw; tmp.height = bh;
+  const tc = tmp.getContext('2d');
+  tc.imageSmoothingEnabled = false;
+  tc.drawImage(procCanvas, 0, 0, bw, bh);
+  pixelCtx.imageSmoothingEnabled = false;
+  pixelCtx.clearRect(0, 0, W, H);
+  pixelCtx.drawImage(tmp, 0, 0, W, H);
+}
+
+const ASCII_CHARS = '@#S%?*+;:,. ';
+
+// Measure the real pixel width of one monospace character at a given font-size
+function measureCharWidth(fontSize) {
+  const tmpCanvas = document.createElement('canvas');
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.font = fontSize + 'px "Courier New", Courier, monospace';
+  return tmpCtx.measureText('M').width;
+}
+
+let lastAsciiFrame = null;
+
+function renderAscii(imgData, W, H) {
+  // Container's rendered pixel dimensions (the absolute-positioned pre fills the viewport-wrap)
+  const cw = asciiPre.parentElement.clientWidth  || 320;
+  const ch = asciiPre.parentElement.clientHeight || 180;
+  if (!cw || !ch) return;
+
+  // Courier New has a very consistent width/height ratio of ~0.6
+  // We use binary search over fontSize to find the largest integer fontSize
+  // where cols = floor(cw / charW) still fills the width, i.e. cols * charW <= cw
+  // But the simplest robust approach:
+  // 1. Pick target cols (e.g. 100), compute fontSize so cols fit exactly.
+  // 2. Then re-derive cols from that fontSize.
+
+  // Use measureText to get ratio at a large reference size (less rounding error)
+  const REF = 100;
+  const tmpC = document.createElement('canvas').getContext('2d');
+  tmpC.font = REF + 'px "Courier New", Courier, monospace';
+  const ratio = tmpC.measureText('M').width / REF; // charWidth = fontSize * ratio
+
+  // cols * (fontSize * ratio) = cw  AND  rows * fontSize = ch
+  // We want the chars to fill width. Pick cols first:
+  // fontSize = cw / (cols * ratio)
+  // rows = ch / fontSize = ch * cols * ratio / cw
+  // Maximize cols (more detail) while fontSize >= 4
+  const MAX_COLS = Math.floor(cw / (4 * ratio));  // fontSize=4 floor
+  const cols = Math.min(MAX_COLS, Math.max(20, Math.floor(cw / (5 * ratio))));
+  const fontSize = cw / (cols * ratio);
+  const rows = Math.max(1, Math.floor(ch / fontSize));
+
+  asciiPre.style.fontSize   = fontSize.toFixed(4) + 'px';
+  asciiPre.style.lineHeight = '1';
+
+  const bw = W / cols, bh = H / rows;
+  const lines = [];
+  for (let r = 0; r < rows; r++) {
+    const chars = [];
+    for (let c = 0; c < cols; c++) {
+      const px  = Math.floor(c * bw);
+      const py  = Math.floor(r * bh);
+      const idx = (py * W + px) * 4;
+      const red = imgData.data[idx];
+      const green = imgData.data[idx + 1];
+      const blue = imgData.data[idx + 2];
+      const bright = (red + green + blue) / 3;
+      const char = ASCII_CHARS[Math.floor((bright / 255) * (ASCII_CHARS.length - 1))];
+      const color = asciiRgbToggle.checked
+        ? `rgb(${red}, ${green}, ${blue})`
+        : asciiFgPicker.value;
+      chars.push(`<span class="ascii-char" style="color:${color}">${char}</span>`);
+    }
+    lines.push(chars.join(''));
+  }
+  asciiPre.innerHTML = lines.join('\n');
+  lastAsciiFrame = { imgData, W, H };
+}
+
+// ── Recording ──────────────────────────────────────────────────────────────
+function getRecordStream() {
+  const target = document.querySelector('input[name=recTarget]:checked').value;
+  // Show rec dot on selected panel only
+  ['Normal','Pixel','Ascii'].forEach(p => {
+    document.getElementById('recDot' + p).style.display = 'none';
+  });
+  if (target === 'normal') {
+    document.getElementById('recDotNormal').style.display = 'block';
+    return stream;
+  }
+  if (target === 'pixel') {
+    document.getElementById('recDotPixel').style.display = 'block';
+    const videoTrack  = pixelCanvas.captureStream(30).getVideoTracks()[0];
+    const audioTracks = stream.getAudioTracks();
+    return new MediaStream([videoTrack, ...audioTracks]);
+  }
+  // ascii → raw stream
+  document.getElementById('recDotAscii').style.display = 'block';
+  return stream;
+}
+
+function startRecord() {
+  if (!stream) return;
+  recordedChunks = [];
+  const recStream = getRecordStream();
+  const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+  const mimeType  = mimeTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  mediaRecorder = new MediaRecorder(recStream, mimeType ? { mimeType } : {});
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = saveRecording;
+  mediaRecorder.start(100);
+  recordingStartTime = Date.now();
+  recordingTimer = setInterval(updateRecTimer, 500);
+  setBtn('btnRec',    true);
+  setBtn('btnStopRec',false);
+  setStatus('⏺ Recording…');
+}
+
+function stopRecord() {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+  mediaRecorder.stop();
+  ['Normal','Pixel','Ascii'].forEach(p => {
+    document.getElementById('recDot' + p).style.display = 'none';
+  });
+  clearInterval(recordingTimer);
+  setBtn('btnRec',    false);
+  setBtn('btnStopRec',true);
+  setStatus('Saving recording…');
+}
+
+function saveRecording() {
+  const blob  = new Blob(recordedChunks, { type: 'video/webm' });
+  const url   = URL.createObjectURL(blob);
+  dlCounter.video++;
+  const fname = 'recording_' + dlCounter.video + '.webm';
+  const dur   = formatDuration(Date.now() - recordingStartTime);
+  addDownload(url, fname, '🎞 Video ' + dlCounter.video + ' — ' + dur, 'webm');
+  setStatus('✅ Recording saved: ' + fname);
+}
+
+// ── Snapshot ALL three panels ──────────────────────────────────────────────
+function takeSnapshot() {
+  if (!stream) return;
+  const W = rawVideo.videoWidth, H = rawVideo.videoHeight;
+
+  // 1. Normal
+  const snapN = document.createElement('canvas');
+  snapN.width = W; snapN.height = H;
+  snapN.getContext('2d').drawImage(rawVideo, 0, 0);
+  saveSnap(snapN, 'Normal');
+
+  // 2. Pixel
+  const snapP = document.createElement('canvas');
+  snapP.width = W; snapP.height = H;
+  snapP.getContext('2d').drawImage(pixelCanvas, 0, 0, W, H);
+  saveSnap(snapP, 'Pixel');
+
+  // 3. ASCII — use the same colors as the live pre
+  const snapA = document.createElement('canvas');
+  snapA.width = W; snapA.height = H;
+  const ac = snapA.getContext('2d');
+  ac.fillStyle = asciiBgPicker.value; ac.fillRect(0, 0, W, H);
+  const aFontSize = parseFloat(asciiPre.style.fontSize) || 6;
+  ac.font = aFontSize + 'px "Courier New", Courier, monospace';
+  ac.textBaseline = 'top';
+  const asciiLines = asciiPre.querySelectorAll('.ascii-char');
+  const colsPerLine = Math.max(1, Math.round(W / (aFontSize * 0.6)));
+  asciiLines.forEach((span, index) => {
+    const col = index % colsPerLine;
+    const row = Math.floor(index / colsPerLine);
+    ac.fillStyle = span.style.color || asciiFgPicker.value;
+    ac.fillText(span.textContent, col * aFontSize * 0.6, row * aFontSize);
+  });
+  saveSnap(snapA, 'ASCII');
+
+  setStatus('✅ 3 snapshots saved.');
+}
+
+function saveSnap(canvas, label) {
+  dlCounter.image++;
+  const fname = 'snapshot_' + dlCounter.image + '_' + label + '.png';
+  addDownload(canvas.toDataURL('image/png'), fname, '🖼 Snapshot ' + dlCounter.image + ' (' + label + ')', 'png');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function addDownload(url, fname, label, ext) {
+  if (dlList.querySelector('p')) dlList.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'dl-item';
+  item.innerHTML = '<span>' + label + '</span><a href="' + url + '" download="' + fname + '">&#8595; ' + ext.toUpperCase() + '</a>';
+  dlList.prepend(item);
+}
+function setBtn(id, disabled) { document.getElementById(id).disabled = disabled; }
+function setStatus(msg) { statusEl.textContent = msg; }
+function formatDuration(ms) {
+  const s = Math.floor(ms/1000), m = Math.floor(s/60);
+  return m > 0 ? m + 'm ' + (s%60) + 's' : s + 's';
+}
+function updateRecTimer() {
+  setStatus('⏺ Recording… ' + Math.floor((Date.now() - recordingStartTime) / 1000) + 's');
+}
+</script>
+</body>
+</html>
