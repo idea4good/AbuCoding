@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Colorful ASCII Camera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d0d0d;
+    color: #eee;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+    color: #aef;
+    text-shadow: 0 0 8px #4af;
+  }
+
+  /* ── Controls bar ── */
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  #controls label { font-size: 0.85rem; color: #aaa; }
+
+  #controls input[type=range] {
+    width: 140px;
+    accent-color: #4af;
+  }
+
+  #densityVal {
+    font-weight: bold;
+    color: #4af;
+    min-width: 28px;
+    display: inline-block;
+  }
+
+  button {
+    background: #1a3a5c;
+    color: #7df;
+    border: 1px solid #4af;
+    border-radius: 6px;
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+  }
+  button:hover { background: #254e7a; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  /* ── Preview wrapper – aspect-ratio driven ── */
+  #previewWrapper {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    /* aspect-ratio is set dynamically via JS */
+    background: #111;
+    border: 1px solid #2a4a6a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* hidden source video */
+  #srcVideo {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* hidden canvas for pixel sampling */
+  #sampleCanvas { display: none; }
+
+  /* ASCII pre – fills wrapper, centred */
+  #asciiPre {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #asciiPre pre {
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: pre;
+    /* transform-origin centre so scale() fills symmetrically */
+    transform-origin: center center;
+    /* actual scale set by JS */
+  }
+
+  /* status overlay */
+  #status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: #8af;
+    background: rgba(0,0,0,0.6);
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  #status.hidden { opacity: 0; }
+
+  #info { font-size: 0.75rem; color: #556; }
+</style>
+</head>
+<body>
+
+<h1>🎨 Colorful ASCII Camera</h1>
+
+<div id="controls">
+  <label>
+    密度 (列数)&nbsp;
+    <input type="range" id="densitySlider" min="20" max="200" value="80" step="1" />
+    <span id="densityVal">80</span>
+  </label>
+  <button id="startBtn">▶ 启动摄像头</button>
+  <button id="stopBtn" disabled>⏹ 停止</button>
+</div>
+
+<!-- Preview area – aspect ratio applied dynamically -->
+<div id="previewWrapper">
+  <video id="srcVideo" autoplay muted playsinline></video>
+  <canvas id="sampleCanvas"></canvas>
+  <div id="asciiPre"><pre id="asciiGrid"></pre></div>
+  <div id="status" id="statusOverlay">请点击「启动摄像头」</div>
+</div>
+
+<div id="info">cols × rows 会根据摄像头比例自动计算 | 字符缩放基于 CSS transform</div>
+
+<script>
+(() => {
+  /* ── DOM refs ── */
+  const video       = document.getElementById('srcVideo');
+  const sampleCvs   = document.getElementById('sampleCanvas');
+  const ctx         = sampleCvs.getContext('2d', { willReadFrequently: true });
+  const wrapper     = document.getElementById('previewWrapper');
+  const asciiPre    = document.getElementById('asciiPre');
+  const asciiGrid   = document.getElementById('asciiGrid');
+  const statusEl    = document.getElementById('status');
+  const startBtn    = document.getElementById('startBtn');
+  const stopBtn     = document.getElementById('stopBtn');
+  const densitySlider = document.getElementById('densitySlider');
+  const densityVal  = document.getElementById('densityVal');
+
+  /* ── ASCII ramp (dark → bright) ── */
+  const RAMP = ' .\'`^",:;Il!i><~+_-?][}{1)(|tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
+
+  /* ── State ── */
+  let stream        = null;
+  let animId        = null;
+  let running       = false;
+  let cols          = parseInt(densitySlider.value);
+  let rows          = 0;
+  let vidW = 0, vidH = 0;
+
+  // layout measurement cache keyed by "cols_rows"
+  const measureCache = {};
+
+  /* ── Helpers ── */
+  function setStatus(msg) {
+    statusEl.textContent = msg;
+    statusEl.classList.remove('hidden');
+  }
+  function hideStatus() {
+    statusEl.classList.add('hidden');
+  }
+
+  /* Map brightness [0..255] to a character */
+  function toChar(b) {
+    return RAMP[Math.floor(b / 255 * (RAMP.length - 1))];
+  }
+
+  /* Build one coloured HTML span per character (batched by row for speed) */
+  function buildHTML(pixels, w, h) {
+    let html = '';
+    for (let row = 0; row < h; row++) {
+      for (let col = 0; col < w; col++) {
+        const idx = (row * w + col) * 4;
+        const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+        const brightness = 0.299*r + 0.587*g + 0.114*b;
+        const ch = toChar(brightness);
+        html += `<span style="color:rgb(${r},${g},${b})">${ch}</span>`;
+      }
+      if (row < h - 1) html += '\n';
+    }
+    return html;
+  }
+
+  /* Measure a single character's rendered size (cached per cols×rows key) */
+  function getCharSize(colCount, rowCount) {
+    const key = `${colCount}_${rowCount}`;
+    if (measureCache[key]) return measureCache[key];
+
+    // temporarily render a tiny probe
+    asciiGrid.style.transform = '';
+    asciiGrid.style.fontSize  = '10px'; // reset to known size first
+
+    const probe = document.createElement('span');
+    probe.style.cssText = 'font-family:"Courier New",Courier,monospace;font-size:10px;line-height:1;visibility:hidden;position:absolute;white-space:pre;';
+    probe.textContent = 'X';
+    document.body.appendChild(probe);
+    const cw = probe.getBoundingClientRect().width;
+    const ch = probe.getBoundingClientRect().height;
+    document.body.removeChild(probe);
+
+    measureCache[key] = { cw, ch };
+    return { cw, ch };
+  }
+
+  /* Apply CSS scale so the grid fills the wrapper */
+  function applyScale() {
+    // Step 1: reset transform, let browser re-layout
+    asciiGrid.style.transform = '';
+
+    // Step 2: nested rAF to ensure DOM has settled
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const wRect = wrapper.getBoundingClientRect();
+        const containerW = wRect.width;
+        const containerH = wRect.height;
+
+        if (!containerW || !containerH) return;
+
+        const { cw, ch } = getCharSize(cols, rows);
+        const gridW = cw * cols;
+        const gridH = ch * rows;
+
+        if (!gridW || !gridH) return;
+
+        const scaleX = containerW / gridW;
+        const scaleY = containerH / gridH;
+        const scale  = Math.min(scaleX, scaleY);
+
+        asciiGrid.style.transform = `scale(${scale})`;
+      });
+    });
+  }
+
+  /* Main render loop */
+  function render() {
+    if (!running) return;
+
+    if (video.readyState >= 2) {
+      sampleCvs.width  = cols;
+      sampleCvs.height = rows;
+      ctx.drawImage(video, 0, 0, cols, rows);
+      const imageData = ctx.getImageData(0, 0, cols, rows);
+      asciiGrid.innerHTML = buildHTML(imageData.data, cols, rows);
+      applyScale();
+    }
+
+    animId = requestAnimationFrame(render);
+  }
+
+  /* Compute rows from camera aspect ratio */
+  function computeRows() {
+    if (!vidW || !vidH) return;
+    // rows = cols × (videoH / videoW) × 0.5  (char height ≈ 2× width)
+    rows = Math.max(1, Math.round(cols * (vidH / vidW) * 0.5));
+  }
+
+  /* Set wrapper aspect-ratio to match camera */
+  function applyAspectRatio() {
+    if (!vidW || !vidH) return;
+    wrapper.style.aspectRatio = `${vidW} / ${vidH}`;
+  }
+
+  /* ── Start camera ── */
+  async function startCamera() {
+    setStatus('正在请求摄像头权限…');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+      video.srcObject = stream;
+
+      // wait for metadata so we know real dimensions
+      await new Promise((res, rej) => {
+        video.onloadedmetadata = () => {
+          vidW = video.videoWidth;
+          vidH = video.videoHeight;
+          res();
+        };
+        video.onerror = rej;
+      });
+
+      await video.play();
+
+      applyAspectRatio();
+      computeRows();
+
+      running = true;
+      startBtn.disabled = true;
+      stopBtn.disabled  = false;
+      hideStatus();
+      render();
+    } catch (e) {
+      setStatus(`❌ 摄像头启动失败: ${e.message}`);
+    }
+  }
+
+  /* ── Stop camera ── */
+  function stopCamera() {
+    running = false;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
+    asciiGrid.innerHTML = '';
+    startBtn.disabled = false;
+    stopBtn.disabled  = true;
+    setStatus('摄像头已停止');
+  }
+
+  /* ── Density slider ── */
+  densitySlider.addEventListener('input', () => {
+    cols = parseInt(densitySlider.value);
+    densityVal.textContent = cols;
+    if (running) {
+      computeRows();
+      // clear measurement cache entries for old sizes (force re-measure)
+      Object.keys(measureCache).forEach(k => delete measureCache[k]);
+      applyScale();
+    }
+  });
+
+  /* ── Buttons ── */
+  startBtn.addEventListener('click', startCamera);
+  stopBtn.addEventListener('click',  stopCamera);
+
+  /* ── Window resize: re-apply scale ── */
+  window.addEventListener('resize', () => {
+    if (running) applyScale();
+  });
+
+})();
+</script>
+</body>
+</html>
