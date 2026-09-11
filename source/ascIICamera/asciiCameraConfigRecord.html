@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Colorful ASCII Camera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0d0d;
+    color: #eee;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    gap: 16px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+    color: #aef;
+    text-shadow: 0 0 8px #4af;
+  }
+  /* ── Controls bar ── */
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  #controls label { font-size: 0.85rem; color: #aaa; }
+  #controls input[type=range] {
+    width: 140px;
+    accent-color: #4af;
+  }
+  #densityVal, #fontSizeVal {
+    font-weight: bold;
+    color: #4af;
+    min-width: 28px;
+    display: inline-block;
+  }
+  button {
+    background: #1a3a5c;
+    color: #7df;
+    border: 1px solid #4af;
+    border-radius: 6px;
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+  }
+  button:hover { background: #254e7a; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  /* Record button states */
+  #recBtn {
+    background: #3a1a1a;
+    color: #f88;
+    border-color: #f44;
+  }
+  #recBtn:hover:not(:disabled) { background: #5c2222; }
+  #recBtn.recording {
+    background: #c0392b;
+    color: #fff;
+    border-color: #ff6b6b;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.5); }
+    50%       { box-shadow: 0 0 0 6px rgba(255,68,68,0); }
+  }
+
+  /* ── Preview wrapper ── */
+  #previewWrapper {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    background: #111;
+    border: 1px solid #2a4a6a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #srcVideo {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #sampleCanvas { display: none; }
+  /* off-screen canvas used for recording */
+  #recordCanvas { display: none; }
+
+  #asciiPre {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #asciiPre pre {
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: pre;
+    /* font-size is set dynamically in JS to fill the wrapper */
+  }
+
+  /* Recording indicator badge */
+  #recBadge {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: rgba(192,57,43,0.85);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: bold;
+    padding: 3px 9px;
+    border-radius: 4px;
+    display: none;
+    letter-spacing: 1px;
+    animation: pulse 1s infinite;
+  }
+  #recBadge.visible { display: block; }
+
+  /* Timer */
+  #recTimer {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    background: rgba(0,0,0,0.55);
+    color: #f88;
+    font-size: 0.78rem;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: none;
+  }
+  #recTimer.visible { display: block; }
+
+  /* status overlay */
+  #status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: #8af;
+    background: rgba(0,0,0,0.6);
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  #status.hidden { opacity: 0; }
+
+  /* ── Downloads panel ── */
+  #downloadPanel {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #downloadPanel h2 {
+    font-size: 0.85rem;
+    color: #556;
+    letter-spacing: 1px;
+  }
+  #downloadList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dl-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #141e28;
+    border: 1px solid #2a3a4a;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    color: #adf;
+  }
+  .dl-item a {
+    color: #7df;
+    text-decoration: none;
+    margin-left: auto;
+    background: #1a3a5c;
+    border: 1px solid #4af;
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+  }
+  .dl-item a:hover { background: #254e7a; }
+  .dl-duration { color: #556; }
+
+  #info { font-size: 0.75rem; color: #556; }
+</style>
+</head>
+<body>
+<h1>🎨 Colorful ASCII Camera</h1>
+
+<div id="controls">
+  <label>
+    密度 (列数)&nbsp;
+    <input type="range" id="densitySlider" min="20" max="200" value="80" step="1" />
+    <span id="densityVal">80</span>
+  </label>
+  <label>
+    字体大小&nbsp;
+    <input type="range" id="fontSizeSlider" min="6" max="32" value="10" step="1" />
+    <span id="fontSizeVal">10</span>px
+  </label>
+  <button id="startBtn">▶ 启动摄像头</button>
+  <button id="stopBtn"  disabled>⏹ 停止</button>
+  <button id="recBtn"   disabled>⏺ 开始录制</button>
+</div>
+
+<div id="previewWrapper">
+  <video id="srcVideo" autoplay muted playsinline></video>
+  <canvas id="sampleCanvas"></canvas>
+  <canvas id="recordCanvas"></canvas>
+  <div id="asciiPre"><pre id="asciiGrid"></pre></div>
+  <div id="recBadge">● REC</div>
+  <div id="recTimer">00:00</div>
+  <div id="status">请点击「启动摄像头」</div>
+</div>
+
+<div id="downloadPanel">
+  <h2>📥 录制文件</h2>
+  <div id="downloadList"><span style="color:#334;font-size:0.8rem;">暂无录制</span></div>
+</div>
+
+<div id="info">cols × rows 自动适配摄像头比例 | 录制为 WebM 格式</div>
+
+<script>
+(() => {
+  /* ── DOM refs ── */
+  const video         = document.getElementById('srcVideo');
+  const sampleCvs     = document.getElementById('sampleCanvas');
+  const recordCvs     = document.getElementById('recordCanvas');
+  const ctx           = sampleCvs.getContext('2d', { willReadFrequently: true });
+  const recCtx        = recordCvs.getContext('2d');
+  const wrapper       = document.getElementById('previewWrapper');
+  const asciiPre      = document.getElementById('asciiPre');
+  const asciiGrid     = document.getElementById('asciiGrid');
+  const statusEl      = document.getElementById('status');
+  const startBtn      = document.getElementById('startBtn');
+  const stopBtn       = document.getElementById('stopBtn');
+  const recBtn        = document.getElementById('recBtn');
+  const recBadge      = document.getElementById('recBadge');
+  const recTimer      = document.getElementById('recTimer');
+  const densitySlider = document.getElementById('densitySlider');
+  const densityVal    = document.getElementById('densityVal');
+  const fontSizeSlider = document.getElementById('fontSizeSlider');
+  const fontSizeVal    = document.getElementById('fontSizeVal');
+  const downloadList  = document.getElementById('downloadList');
+
+  /* ── ASCII ramp (dark → bright) ── */
+  const RAMP = ' .\'`^",:;Il!i><~+_-?][}{1)(|tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
+
+  /* ── State ── */
+  let measureCache   = {};
+  let stream         = null;
+  let animId         = null;
+  let running        = false;
+  let cols           = parseInt(densitySlider.value);
+  let baseFontSize   = parseInt(fontSizeSlider.value); // user-chosen base font-size in px
+  let rows           = 0;
+  let vidW = 0, vidH = 0;
+  // font-size is computed directly from wrapper geometry — no measure cache needed
+
+  /* ── Recording state ── */
+  let mediaRecorder  = null;
+  let recChunks      = [];
+  let isRecording    = false;
+  let recStartTime   = 0;
+  let recTimerIntv   = null;
+  let recIndex       = 0;    // increments per recording
+
+  /* ── Helpers ── */
+  function setStatus(msg) {
+    statusEl.textContent = msg;
+    statusEl.classList.remove('hidden');
+  }
+  function hideStatus() { statusEl.classList.add('hidden'); }
+
+  function toChar(b) {
+    return RAMP[Math.floor(b / 255 * (RAMP.length - 1))];
+  }
+
+  function buildHTML(pixels, w, h) {
+    let html = '';
+    for (let row = 0; row < h; row++) {
+      for (let col = 0; col < w; col++) {
+        const idx = (row * w + col) * 4;
+        const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+        const brightness = 0.299*r + 0.587*g + 0.114*b;
+        const ch = toChar(brightness);
+        html += `<span style="color:rgb(${r},${g},${b})">${ch}</span>`;
+      }
+      if (row < h - 1) html += '\n';
+    }
+    return html;
+  }
+
+  /* ── Draw ASCII art onto the record canvas ── */
+  function drawASCIIToCanvas(pixels, w, h) {
+    const cvsW = recordCvs.width;
+    const cvsH = recordCvs.height;
+    const charW = cvsW / w;
+    const charH = cvsH / h;
+    const fontSize = Math.max(4, Math.floor(charH));
+
+    recCtx.fillStyle = '#000';
+    recCtx.fillRect(0, 0, cvsW, cvsH);
+    recCtx.font = `${fontSize}px "Courier New", Courier, monospace`;
+    recCtx.textBaseline = 'top';
+
+    for (let row = 0; row < h; row++) {
+      for (let col = 0; col < w; col++) {
+        const idx = (row * w + col) * 4;
+        const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+        const brightness = 0.299*r + 0.587*g + 0.114*b;
+        const ch = toChar(brightness);
+        recCtx.fillStyle = `rgb(${r},${g},${b})`;
+        recCtx.fillText(ch, col * charW, row * charH);
+      }
+    }
+  }
+
+  function getCharSize(colCount, rowCount) {
+    const key = `${colCount}_${rowCount}`;
+    if (measureCache[key]) return measureCache[key];
+    asciiGrid.style.transform = '';
+    const probe = document.createElement('span');
+    probe.style.cssText = `font-family:"Courier New",Courier,monospace;font-size:${baseFontSize}px;line-height:1;visibility:hidden;position:absolute;white-space:pre;`;
+    probe.textContent = 'X';
+    document.body.appendChild(probe);
+    const cw = probe.getBoundingClientRect().width;
+    const ch = probe.getBoundingClientRect().height;
+    document.body.removeChild(probe);
+    measureCache[key] = { cw, ch };
+    return { cw, ch };
+  }
+
+  function applyScale() {
+    asciiGrid.style.transform = '';
+    asciiGrid.style.fontSize = baseFontSize + 'px';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const wRect = wrapper.getBoundingClientRect();
+        const containerW = wRect.width;
+        const containerH = wRect.height;
+        if (!containerW || !containerH) return;
+        const { cw, ch } = getCharSize(cols, rows);
+        const gridW = cw * cols;
+        const gridH = ch * rows;
+        if (!gridW || !gridH) return;
+        const scale = Math.min(containerW / gridW, containerH / gridH);
+        asciiGrid.style.transform = `scale(${scale})`;
+      });
+    });
+  }
+
+  /* ── Main render loop ── */
+  function render() {
+    if (!running) return;
+    if (video.readyState >= 2) {
+      sampleCvs.width  = cols;
+      sampleCvs.height = rows;
+      ctx.drawImage(video, 0, 0, cols, rows);
+      const imageData = ctx.getImageData(0, 0, cols, rows);
+
+      /* Update ASCII preview */
+      asciiGrid.innerHTML = buildHTML(imageData.data, cols, rows);
+      applyScale();
+
+      /* If recording, also draw frame to recordCanvas */
+      if (isRecording) {
+        drawASCIIToCanvas(imageData.data, cols, rows);
+      }
+    }
+    animId = requestAnimationFrame(render);
+  }
+
+  function computeRows() {
+    if (!vidW || !vidH) return;
+    rows = Math.max(1, Math.round(cols * (vidH / vidW) * 0.5));
+  }
+
+  function applyAspectRatio() {
+    if (!vidW || !vidH) return;
+    wrapper.style.aspectRatio = `${vidW} / ${vidH}`;
+  }
+
+  /* ── Recording timer ── */
+  function formatTime(ms) {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return `${String(m).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+  }
+
+  /* ── Start Recording ── */
+  function startRecording() {
+    if (!running || isRecording) return;
+
+    /* Set up the off-screen canvas for video capture.
+       Use 2× multiplier so characters are legible in the video. */
+    const scale = 8; // pixels per character cell
+    recordCvs.width  = cols * scale;
+    recordCvs.height = rows * scale * 2; // ×2 for char height ratio
+
+    /* Capture the canvas stream at 25 fps */
+    const canvasStream = recordCvs.captureStream(25);
+
+    /* Pick best supported codec */
+    const mimeTypes = [
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm'
+    ];
+    const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+    try {
+      mediaRecorder = new MediaRecorder(canvasStream, mimeType ? { mimeType } : {});
+    } catch(e) {
+      mediaRecorder = new MediaRecorder(canvasStream);
+    }
+
+    recChunks = [];
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) recChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+      const url  = URL.createObjectURL(blob);
+      const duration = Date.now() - recStartTime;
+      addDownloadEntry(url, duration, blob.size);
+    };
+
+    mediaRecorder.start(200); // collect data every 200ms
+    isRecording  = true;
+    recStartTime = Date.now();
+
+    /* Update UI */
+    recBtn.textContent = '⏹ 停止录制';
+    recBtn.classList.add('recording');
+    recBadge.classList.add('visible');
+    recTimer.classList.add('visible');
+    recTimer.textContent = '00:00';
+
+    recTimerIntv = setInterval(() => {
+      recTimer.textContent = formatTime(Date.now() - recStartTime);
+    }, 500);
+  }
+
+  /* ── Stop Recording ── */
+  function stopRecording() {
+    if (!isRecording || !mediaRecorder) return;
+    mediaRecorder.stop();
+    isRecording = false;
+
+    clearInterval(recTimerIntv);
+    recTimer.classList.remove('visible');
+    recBadge.classList.remove('visible');
+    recBtn.textContent = '⏺ 开始录制';
+    recBtn.classList.remove('recording');
+  }
+
+  /* ── Add entry to download panel ── */
+  function addDownloadEntry(url, durationMs, bytes) {
+    recIndex++;
+    const durationStr = formatTime(durationMs);
+    const sizeStr     = (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    const filename    = `ascii_rec_${recIndex}.webm`;
+
+    /* Remove placeholder */
+    const placeholder = downloadList.querySelector('span');
+    if (placeholder) placeholder.remove();
+
+    const item = document.createElement('div');
+    item.className = 'dl-item';
+    item.innerHTML = `
+      <span>🎬 录制 #${recIndex}</span>
+      <span class="dl-duration">时长 ${durationStr}</span>
+      <span class="dl-duration">${sizeStr}</span>
+      <a href="${url}" download="${filename}">⬇ 下载</a>
+    `;
+    downloadList.prepend(item);
+  }
+
+  /* ── Start camera ── */
+  async function startCamera() {
+    setStatus('正在请求摄像头权限…');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+      video.srcObject = stream;
+      await new Promise((res, rej) => {
+        video.onloadedmetadata = () => {
+          vidW = video.videoWidth;
+          vidH = video.videoHeight;
+          res();
+        };
+        video.onerror = rej;
+      });
+      await video.play();
+      applyAspectRatio();
+      computeRows();
+      running = true;
+      startBtn.disabled = true;
+      stopBtn.disabled  = false;
+      recBtn.disabled   = false;
+      hideStatus();
+      render();
+    } catch (e) {
+      setStatus(`❌ 摄像头启动失败: ${e.message}`);
+    }
+  }
+
+  /* ── Stop camera ── */
+  function stopCamera() {
+    if (isRecording) stopRecording();
+    running = false;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
+    asciiGrid.innerHTML = '';
+    startBtn.disabled = false;
+    stopBtn.disabled  = true;
+    recBtn.disabled   = true;
+    setStatus('摄像头已停止');
+  }
+
+  /* ── Density slider ── */
+  densitySlider.addEventListener('input', () => {
+    cols = parseInt(densitySlider.value);
+    densityVal.textContent = cols;
+    measureCache = {};
+    if (running) {
+      computeRows();
+      applyScale();
+    }
+  });
+  fontSizeSlider.addEventListener('input', () => {
+    baseFontSize = parseInt(fontSizeSlider.value);
+    fontSizeVal.textContent = baseFontSize;
+    measureCache = {};
+    if (running) applyScale();
+  });
+
+  /* ── Buttons ── */
+  startBtn.addEventListener('click', startCamera);
+  stopBtn.addEventListener('click',  stopCamera);
+  recBtn.addEventListener('click',   () => {
+    isRecording ? stopRecording() : startRecording();
+  });
+
+  /* ── Window resize ── */
+  window.addEventListener('resize', () => {
+    if (running) applyScale();
+  });
+})();
+</script>
+</body>
+</html>
