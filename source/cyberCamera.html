@@ -343,8 +343,10 @@ function applyPixelEffect(W, H, size) {
   pixelCtx.clearRect(0, 0, W, H);
   pixelCtx.drawImage(tmp, 0, 0, W, H);
 }
-
-const ASCII_CHARS = '@#S%?*+;:,. ';
+ 
+//const ASCII_CHARS = '$@B%8&WM#*oahkbdpqwm...';
+//const ASCII_CHARS = '@#S%?*+;:,. ';
+const ASCII_CHARS = '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'.';
 
 // Measure the real pixel width of one monospace character at a given font-size
 function measureCharWidth(fontSize) {
