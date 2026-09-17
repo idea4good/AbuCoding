@@ -6,7 +6,6 @@
 <title>Colorful ASCII Camera</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     background: #0d0d0d;
     color: #eee;
@@ -18,342 +17,555 @@
     padding: 20px;
     gap: 16px;
   }
-
   h1 {
     font-size: 1.3rem;
     letter-spacing: 2px;
     color: #aef;
     text-shadow: 0 0 8px #4af;
   }
-
-  /* ── Controls bar ── */
   #controls {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 14px;
     flex-wrap: wrap;
     justify-content: center;
   }
-
   #controls label { font-size: 0.85rem; color: #aaa; }
-
-  #controls input[type=range] {
-    width: 140px;
-    accent-color: #4af;
+  #controls input[type=range] { width: 140px; accent-color: #4af; }
+  #densityVal, #fontSizeVal {
+    font-weight: bold; color: #4af;
+    min-width: 28px; display: inline-block;
   }
-
-  #densityVal {
-    font-weight: bold;
-    color: #4af;
-    min-width: 28px;
-    display: inline-block;
-  }
-
   button {
-    background: #1a3a5c;
-    color: #7df;
-    border: 1px solid #4af;
-    border-radius: 6px;
-    padding: 6px 16px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: background 0.2s;
+    background: #1a3a5c; color: #7df;
+    border: 1px solid #4af; border-radius: 6px;
+    padding: 6px 16px; cursor: pointer;
+    font-size: 0.85rem; transition: background 0.2s;
   }
   button:hover { background: #254e7a; }
   button:disabled { opacity: 0.4; cursor: default; }
-
-  /* ── Preview wrapper – aspect-ratio driven ── */
+  #recBtn { background: #3a1a1a; color: #f88; border-color: #f44; }
+  #recBtn:hover:not(:disabled) { background: #5c2222; }
+  #recBtn.recording {
+    background: #c0392b; color: #fff; border-color: #ff6b6b;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.5); }
+    50%       { box-shadow: 0 0 0 6px rgba(255,68,68,0); }
+  }
   #previewWrapper {
-    position: relative;
-    width: 100%;
-    max-width: 900px;
-    /* aspect-ratio is set dynamically via JS */
-    background: #111;
-    border: 1px solid #2a4a6a;
-    border-radius: 8px;
-    overflow: hidden;
+    position: relative; width: 100%; max-width: 900px;
+    background: #111; border: 1px solid #2a4a6a;
+    border-radius: 8px; overflow: hidden;
   }
-
-  /* hidden source video */
-  #srcVideo {
-    position: absolute;
-    width: 1px; height: 1px;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  /* hidden canvas for pixel sampling */
+  #srcVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   #sampleCanvas { display: none; }
-
-  /* ASCII pre – fills wrapper, centred */
+  #recordCanvas { display: none; }
   #asciiPre {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
     overflow: hidden;
   }
-
   #asciiPre pre {
     font-family: 'Courier New', Courier, monospace;
-    line-height: 1;
-    letter-spacing: 0;
-    white-space: pre;
-    /* transform-origin centre so scale() fills symmetrically */
-    transform-origin: center center;
-    /* actual scale set by JS */
+    line-height: 1; letter-spacing: 0; white-space: pre;
   }
-
-  /* status overlay */
+  #recBadge {
+    position: absolute; top: 10px; right: 14px;
+    background: rgba(192,57,43,0.85); color: #fff;
+    font-size: 0.72rem; font-weight: bold;
+    padding: 3px 9px; border-radius: 4px;
+    display: none; letter-spacing: 1px;
+    animation: pulse 1s infinite;
+  }
+  #recBadge.visible { display: block; }
+  #recTimer {
+    position: absolute; top: 10px; left: 14px;
+    background: rgba(0,0,0,0.55); color: #f88;
+    font-size: 0.78rem; font-family: 'Courier New', monospace;
+    font-weight: bold; padding: 2px 8px; border-radius: 4px; display: none;
+  }
+  #recTimer.visible { display: block; }
   #status {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: #8af;
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; color: #8af;
     background: rgba(0,0,0,0.6);
-    pointer-events: none;
-    transition: opacity 0.4s;
+    pointer-events: none; transition: opacity 0.4s;
   }
   #status.hidden { opacity: 0; }
-
+  #downloadPanel { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 8px; }
+  #downloadPanel h2 { font-size: 0.85rem; color: #556; letter-spacing: 1px; }
+  #downloadList { display: flex; flex-direction: column; gap: 6px; }
+  .dl-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #141e28; border: 1px solid #2a3a4a;
+    border-radius: 6px; padding: 6px 12px;
+    font-size: 0.82rem; color: #adf;
+  }
+  .dl-item a {
+    color: #7df; text-decoration: none; margin-left: auto;
+    background: #1a3a5c; border: 1px solid #4af;
+    border-radius: 4px; padding: 3px 10px; font-size: 0.78rem;
+  }
+  .dl-item a:hover { background: #254e7a; }
+  .dl-duration { color: #556; }
   #info { font-size: 0.75rem; color: #556; }
 </style>
 </head>
 <body>
-
 <h1>🎨 Colorful ASCII Camera</h1>
-
 <div id="controls">
   <label>
     密度 (列数)&nbsp;
     <input type="range" id="densitySlider" min="20" max="200" value="80" step="1" />
     <span id="densityVal">80</span>
   </label>
-  <button id="startBtn">▶ 启动摄像头</button>
-  <button id="stopBtn" disabled>⏹ 停止</button>
+  <label>
+    字体大小&nbsp;
+    <input type="range" id="fontSizeSlider" min="6" max="32" value="10" step="1" />
+    <span id="fontSizeVal">10</span>px
+  </label>
+  <button id="startBtn">&#9654; 启动摄像头</button>
+  <button id="stopBtn"  disabled>&#9209; 停止</button>
+  <button id="flipBtn"  disabled>&#128260; 翻转摄像头</button>
+  <button id="recBtn"   disabled>&#9210; 开始录制</button>
 </div>
-
-<!-- Preview area – aspect ratio applied dynamically -->
 <div id="previewWrapper">
   <video id="srcVideo" autoplay muted playsinline></video>
   <canvas id="sampleCanvas"></canvas>
+  <canvas id="recordCanvas"></canvas>
   <div id="asciiPre"><pre id="asciiGrid"></pre></div>
-  <div id="status" id="statusOverlay">请点击「启动摄像头」</div>
+  <div id="recBadge">&#9679; REC</div>
+  <div id="recTimer">00:00</div>
+  <div id="status">请点击「启动摄像头」</div>
 </div>
-
-<div id="info">cols × rows 会根据摄像头比例自动计算 | 字符缩放基于 CSS transform</div>
-
+<div id="downloadPanel">
+  <h2>&#128229; 录制文件</h2>
+  <div id="downloadList"><span style="color:#334;font-size:0.8rem;">暂无录制</span></div>
+</div>
+<div id="info">cols × rows 自动适配摄像头比例 | 录制为 WebM 格式</div>
 <script>
-(() => {
-  /* ── DOM refs ── */
-  const video       = document.getElementById('srcVideo');
-  const sampleCvs   = document.getElementById('sampleCanvas');
-  const ctx         = sampleCvs.getContext('2d', { willReadFrequently: true });
-  const wrapper     = document.getElementById('previewWrapper');
-  const asciiPre    = document.getElementById('asciiPre');
-  const asciiGrid   = document.getElementById('asciiGrid');
-  const statusEl    = document.getElementById('status');
-  const startBtn    = document.getElementById('startBtn');
-  const stopBtn     = document.getElementById('stopBtn');
-  const densitySlider = document.getElementById('densitySlider');
-  const densityVal  = document.getElementById('densityVal');
+(function () {
+  'use strict';
 
-  /* ── ASCII ramp (dark → bright) ── */
-  const RAMP = ' .\'`^",:;Il!i><~+_-?][}{1)(|tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
+  /* ── DOM refs ── */
+  var video          = document.getElementById('srcVideo');
+  var sampleCvs      = document.getElementById('sampleCanvas');
+  var recordCvs      = document.getElementById('recordCanvas');
+  var wrapper        = document.getElementById('previewWrapper');
+  var asciiGrid      = document.getElementById('asciiGrid');
+  var statusEl       = document.getElementById('status');
+  var startBtn       = document.getElementById('startBtn');
+  var stopBtn        = document.getElementById('stopBtn');
+  var flipBtn        = document.getElementById('flipBtn');
+  var recBtn         = document.getElementById('recBtn');
+  var recBadge       = document.getElementById('recBadge');
+  var recTimer       = document.getElementById('recTimer');
+  var densitySlider  = document.getElementById('densitySlider');
+  var densityVal     = document.getElementById('densityVal');
+  var fontSizeSlider = document.getElementById('fontSizeSlider');
+  var fontSizeVal    = document.getElementById('fontSizeVal');
+  var downloadList   = document.getElementById('downloadList');
+
+  /* ── Canvas contexts ── */
+  var ctx    = null;
+  var recCtx = null;
+  try { ctx    = sampleCvs.getContext('2d', { willReadFrequently: true }); } catch (e) { console.warn('sampleCvs ctx failed', e); }
+  try { recCtx = recordCvs.getContext('2d'); }                               catch (e) { console.warn('recordCvs ctx failed', e); }
+
+  /* ── ASCII ramp ── */
+  var RAMP = " .'`^\",:;Il!i><~+_-?][}{1)(|tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
   /* ── State ── */
-  let stream        = null;
-  let animId        = null;
-  let running       = false;
-  let cols          = parseInt(densitySlider.value);
-  let rows          = 0;
-  let vidW = 0, vidH = 0;
+  var measureCache  = {};
+  var stream        = null;
+  var animId        = null;
+  var running       = false;
+  var isSwitching   = false;
+  var cols          = parseInt(densitySlider.value, 10)  || 80;
+  var baseFontSize  = parseInt(fontSizeSlider.value, 10) || 10;
+  var rows          = 0;
+  var vidW          = 0;
+  var vidH          = 0;
+  var currentFacing = 'user';
 
-  // layout measurement cache keyed by "cols_rows"
-  const measureCache = {};
+  /* ── Recording state ── */
+  var mediaRecorder = null;
+  var recChunks     = [];
+  var isRecording   = false;
+  var recStartTime  = 0;
+  var recTimerIntv  = null;
+  var recIndex      = 0;
 
-  /* ── Helpers ── */
+  /* ────────────────────────── Helpers ─────────────────────────── */
   function setStatus(msg) {
     statusEl.textContent = msg;
     statusEl.classList.remove('hidden');
   }
-  function hideStatus() {
-    statusEl.classList.add('hidden');
-  }
+  function hideStatus() { statusEl.classList.add('hidden'); }
 
-  /* Map brightness [0..255] to a character */
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
   function toChar(b) {
-    return RAMP[Math.floor(b / 255 * (RAMP.length - 1))];
+    return RAMP[clamp(Math.floor(b / 255 * (RAMP.length - 1)), 0, RAMP.length - 1)];
   }
 
-  /* Build one coloured HTML span per character (batched by row for speed) */
+  /* Build coloured HTML — skip frame if too many cells to avoid freeze */
+  var MAX_CELLS = 50000;
   function buildHTML(pixels, w, h) {
-    let html = '';
-    for (let row = 0; row < h; row++) {
-      for (let col = 0; col < w; col++) {
-        const idx = (row * w + col) * 4;
-        const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
-        const brightness = 0.299*r + 0.587*g + 0.114*b;
-        const ch = toChar(brightness);
-        html += `<span style="color:rgb(${r},${g},${b})">${ch}</span>`;
+    if (w * h > MAX_CELLS) return asciiGrid.innerHTML; // keep last frame
+    var parts = [];
+    for (var row = 0; row < h; row++) {
+      for (var col = 0; col < w; col++) {
+        var idx = (row * w + col) * 4;
+        var r   = pixels[idx];
+        var g   = pixels[idx + 1];
+        var b   = pixels[idx + 2];
+        var bri = 0.299 * r + 0.587 * g + 0.114 * b;
+        parts.push('<span style="color:rgb(' + r + ',' + g + ',' + b + ')">' + toChar(bri) + '</span>');
       }
-      if (row < h - 1) html += '\n';
+      if (row < h - 1) parts.push('\n');
     }
-    return html;
+    return parts.join('');
   }
 
-  /* Measure a single character's rendered size (cached per cols×rows key) */
-  function getCharSize(colCount, rowCount) {
-    const key = `${colCount}_${rowCount}`;
+  function drawASCIIToCanvas(pixels, w, h) {
+    if (!recCtx) return;
+    var cvsW = recordCvs.width, cvsH = recordCvs.height;
+    if (!cvsW || !cvsH) return;
+    var charW    = cvsW / w;
+    var charH    = cvsH / h;
+    var fontSize = Math.max(4, Math.floor(charH));
+    recCtx.fillStyle = '#000';
+    recCtx.fillRect(0, 0, cvsW, cvsH);
+    recCtx.font         = fontSize + 'px "Courier New", Courier, monospace';
+    recCtx.textBaseline = 'top';
+    for (var row = 0; row < h; row++) {
+      for (var col = 0; col < w; col++) {
+        var idx = (row * w + col) * 4;
+        var r   = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
+        var bri = 0.299 * r + 0.587 * g + 0.114 * b;
+        recCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+        recCtx.fillText(toChar(bri), col * charW, row * charH);
+      }
+    }
+  }
+
+  function getCharSize() {
+    var key = '' + baseFontSize;
     if (measureCache[key]) return measureCache[key];
-
-    // temporarily render a tiny probe
-    asciiGrid.style.transform = '';
-    asciiGrid.style.fontSize  = '10px'; // reset to known size first
-
-    const probe = document.createElement('span');
-    probe.style.cssText = 'font-family:"Courier New",Courier,monospace;font-size:10px;line-height:1;visibility:hidden;position:absolute;white-space:pre;';
+    var probe = document.createElement('span');
+    probe.style.cssText =
+      'font-family:"Courier New",Courier,monospace;font-size:' + baseFontSize + 'px;' +
+      'line-height:1;visibility:hidden;position:absolute;white-space:pre;';
     probe.textContent = 'X';
     document.body.appendChild(probe);
-    const cw = probe.getBoundingClientRect().width;
-    const ch = probe.getBoundingClientRect().height;
+    var rect = probe.getBoundingClientRect();
     document.body.removeChild(probe);
-
-    measureCache[key] = { cw, ch };
-    return { cw, ch };
+    var result = { cw: rect.width  || baseFontSize * 0.6,
+                   ch: rect.height || baseFontSize };
+    measureCache[key] = result;
+    return result;
   }
 
-  /* Apply CSS scale so the grid fills the wrapper */
   function applyScale() {
-    // Step 1: reset transform, let browser re-layout
     asciiGrid.style.transform = '';
-
-    // Step 2: nested rAF to ensure DOM has settled
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const wRect = wrapper.getBoundingClientRect();
-        const containerW = wRect.width;
-        const containerH = wRect.height;
-
-        if (!containerW || !containerH) return;
-
-        const { cw, ch } = getCharSize(cols, rows);
-        const gridW = cw * cols;
-        const gridH = ch * rows;
-
+    asciiGrid.style.fontSize  = baseFontSize + 'px';
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        var wRect      = wrapper.getBoundingClientRect();
+        var contW      = wRect.width;
+        var contH      = wRect.height;
+        if (!contW || !contH || !rows || !cols) return;
+        var cs         = getCharSize();
+        var gridW      = cs.cw * cols;
+        var gridH      = cs.ch * rows;
         if (!gridW || !gridH) return;
-
-        const scaleX = containerW / gridW;
-        const scaleY = containerH / gridH;
-        const scale  = Math.min(scaleX, scaleY);
-
-        asciiGrid.style.transform = `scale(${scale})`;
+        var scale      = Math.min(contW / gridW, contH / gridH);
+        asciiGrid.style.transform = 'scale(' + scale + ')';
       });
     });
   }
 
-  /* Main render loop */
+  /* ─────────────────────── Render loop ───────────────────────── */
   function render() {
     if (!running) return;
-
-    if (video.readyState >= 2) {
-      sampleCvs.width  = cols;
-      sampleCvs.height = rows;
-      ctx.drawImage(video, 0, 0, cols, rows);
-      const imageData = ctx.getImageData(0, 0, cols, rows);
-      asciiGrid.innerHTML = buildHTML(imageData.data, cols, rows);
-      applyScale();
+    try {
+      if (ctx && video.readyState >= 2 && vidW > 0 && vidH > 0) {
+        sampleCvs.width  = cols;
+        sampleCvs.height = rows;
+        ctx.drawImage(video, 0, 0, cols, rows);
+        var imageData = ctx.getImageData(0, 0, cols, rows);
+        asciiGrid.innerHTML = buildHTML(imageData.data, cols, rows);
+        applyScale();
+        if (isRecording) drawASCIIToCanvas(imageData.data, cols, rows);
+      }
+    } catch (err) {
+      console.warn('[ASCII render] frame skipped:', err);
     }
-
     animId = requestAnimationFrame(render);
   }
 
-  /* Compute rows from camera aspect ratio */
   function computeRows() {
-    if (!vidW || !vidH) return;
-    // rows = cols × (videoH / videoW) × 0.5  (char height ≈ 2× width)
+    if (!vidW || !vidH) { rows = Math.max(1, Math.round(cols * 0.5)); return; }
     rows = Math.max(1, Math.round(cols * (vidH / vidW) * 0.5));
   }
-
-  /* Set wrapper aspect-ratio to match camera */
   function applyAspectRatio() {
-    if (!vidW || !vidH) return;
-    wrapper.style.aspectRatio = `${vidW} / ${vidH}`;
+    if (vidW && vidH) wrapper.style.aspectRatio = vidW + ' / ' + vidH;
   }
 
-  /* ── Start camera ── */
-  async function startCamera() {
-    setStatus('正在请求摄像头权限…');
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
-      });
-      video.srcObject = stream;
+  /* ── Recording timer ── */
+  function formatTime(ms) {
+    var s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+    return ('0' + m).slice(-2) + ':' + ('0' + (s % 60)).slice(-2);
+  }
 
-      // wait for metadata so we know real dimensions
-      await new Promise((res, rej) => {
-        video.onloadedmetadata = () => {
-          vidW = video.videoWidth;
-          vidH = video.videoHeight;
-          res();
-        };
-        video.onerror = rej;
-      });
+  /* ─────────────────── Start Recording ──────────────────────── */
+  function startRecording() {
+    if (!running || isRecording) return;
+    if (!recCtx) { alert('当前浏览器不支持 Canvas 录制'); return; }
+    if (!cols || !rows) { console.warn('cols/rows not ready'); return; }
 
-      await video.play();
-
-      applyAspectRatio();
-      computeRows();
-
-      running = true;
-      startBtn.disabled = true;
-      stopBtn.disabled  = false;
-      hideStatus();
-      render();
-    } catch (e) {
-      setStatus(`❌ 摄像头启动失败: ${e.message}`);
+    var scale = 8;
+    var cvsW  = cols * scale;
+    var cvsH  = rows * scale * 2;
+    if (cvsW > 4096 || cvsH > 4096) {
+      alert('录制画布尺寸过大 (' + cvsW + 'x' + cvsH + ')，请降低密度后再录制');
+      return;
     }
+    recordCvs.width  = cvsW;
+    recordCvs.height = cvsH;
+
+    var canvasStream;
+    try { canvasStream = recordCvs.captureStream(25); }
+    catch (e) { alert('captureStream 不支持: ' + e.message); return; }
+
+    var mimeTypes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    var mimeType  = '';
+    for (var i = 0; i < mimeTypes.length; i++) {
+      try { if (MediaRecorder.isTypeSupported(mimeTypes[i])) { mimeType = mimeTypes[i]; break; } }
+      catch (e) {}
+    }
+
+    try {
+      mediaRecorder = mimeType
+        ? new MediaRecorder(canvasStream, { mimeType: mimeType })
+        : new MediaRecorder(canvasStream);
+    } catch (e) {
+      try { mediaRecorder = new MediaRecorder(canvasStream); }
+      catch (e2) { alert('MediaRecorder 创建失败: ' + e2.message); return; }
+    }
+
+    recChunks = [];
+    mediaRecorder.ondataavailable = function (e) {
+      if (e.data && e.data.size > 0) recChunks.push(e.data);
+    };
+    mediaRecorder.onerror = function (e) {
+      console.error('[MediaRecorder] error:', e);
+      stopRecording();
+    };
+    mediaRecorder.onstop = function () {
+      if (!recChunks.length) return;
+      var blob = new Blob(recChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+      addDownloadEntry(URL.createObjectURL(blob), Date.now() - recStartTime, blob.size);
+    };
+
+    try { mediaRecorder.start(200); }
+    catch (e) { alert('录制启动失败: ' + e.message); return; }
+
+    isRecording  = true;
+    recStartTime = Date.now();
+    recBtn.textContent = '⏹ 停止录制';
+    recBtn.classList.add('recording');
+    recBadge.classList.add('visible');
+    recTimer.classList.add('visible');
+    recTimer.textContent = '00:00';
+    recTimerIntv = setInterval(function () {
+      recTimer.textContent = formatTime(Date.now() - recStartTime);
+    }, 500);
   }
 
-  /* ── Stop camera ── */
+  /* ─────────────────── Stop Recording ───────────────────────── */
+  function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    clearInterval(recTimerIntv); recTimerIntv = null;
+    recTimer.classList.remove('visible');
+    recBadge.classList.remove('visible');
+    recBtn.textContent = '⏺ 开始录制';
+    recBtn.classList.remove('recording');
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try { mediaRecorder.stop(); } catch (e) { console.warn('mediaRecorder.stop():', e); }
+    }
+    mediaRecorder = null;
+  }
+
+  function addDownloadEntry(url, durationMs, bytes) {
+    recIndex++;
+    var placeholder = downloadList.querySelector('span');
+    if (placeholder) placeholder.remove();
+    var item = document.createElement('div');
+    item.className = 'dl-item';
+    item.innerHTML =
+      '<span>🎬 录制 #' + recIndex + '</span>' +
+      '<span class="dl-duration">时长 ' + formatTime(durationMs) + '</span>' +
+      '<span class="dl-duration">' + (bytes / 1048576).toFixed(2) + ' MB</span>' +
+      '<a href="' + url + '" download="ascii_rec_' + recIndex + '.webm">⬇ 下载</a>';
+    downloadList.prepend(item);
+  }
+
+  /* ───────────────────── Start Camera ───────────────────────── */
+  function startCamera(facing) {
+    if (isSwitching) return;
+    isSwitching   = true;
+    facing        = facing || currentFacing;
+    startBtn.disabled = true;
+    flipBtn.disabled  = true;
+    setStatus('正在请求摄像头权限…');
+
+    var constraints = { video: { facingMode: { ideal: facing } }, audio: false };
+
+    function onStream(s) {
+      stream          = s;
+      video.srcObject = s;
+
+      var done    = false;
+      var timeout = setTimeout(function () {
+        if (done) return; done = true;
+        vidW = video.videoWidth  || 640;
+        vidH = video.videoHeight || 480;
+        onReady();
+      }, 5000);
+
+      video.onloadedmetadata = function () {
+        if (done) return; done = true;
+        clearTimeout(timeout);
+        vidW = video.videoWidth  || 640;
+        vidH = video.videoHeight || 480;
+        onReady();
+      };
+
+      video.onerror = function (e) {
+        if (done) return; done = true;
+        clearTimeout(timeout);
+        onError(new Error('video element error'));
+      };
+    }
+
+    function onReady() {
+      var playPromise = video.play();
+      var finish = function () {
+        currentFacing     = facing;
+        applyAspectRatio();
+        computeRows();
+        running           = true;
+        isSwitching       = false;
+        startBtn.disabled = true;
+        stopBtn.disabled  = false;
+        flipBtn.disabled  = false;
+        recBtn.disabled   = false;
+        hideStatus();
+        if (animId) { cancelAnimationFrame(animId); animId = null; }
+        render();
+      };
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.then(finish).catch(function (e) {
+          console.warn('video.play() rejected:', e);
+          finish(); // still try to render
+        });
+      } else {
+        finish();
+      }
+    }
+
+    function onError(e) {
+      console.error('getUserMedia error:', e);
+      /* fallback: try without facingMode */
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(onStream)
+        .catch(function (e2) {
+          setStatus('❌ 摄像头启动失败: ' + (e2.message || e2));
+          startBtn.disabled = false;
+          isSwitching       = false;
+        });
+    }
+
+    navigator.mediaDevices.getUserMedia(constraints).then(onStream).catch(onError);
+  }
+
+  /* ───────────────────── Stop Camera ────────────────────────── */
   function stopCamera() {
+    if (isRecording) stopRecording();
     running = false;
     if (animId) { cancelAnimationFrame(animId); animId = null; }
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    video.srcObject = null;
+    if (stream) {
+      try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+      stream = null;
+    }
+    video.srcObject   = null;
     asciiGrid.innerHTML = '';
     startBtn.disabled = false;
     stopBtn.disabled  = true;
+    flipBtn.disabled  = true;
+    recBtn.disabled   = true;
+    isSwitching       = false;
     setStatus('摄像头已停止');
   }
 
-  /* ── Density slider ── */
-  densitySlider.addEventListener('input', () => {
-    cols = parseInt(densitySlider.value);
-    densityVal.textContent = cols;
-    if (running) {
-      computeRows();
-      // clear measurement cache entries for old sizes (force re-measure)
-      Object.keys(measureCache).forEach(k => delete measureCache[k]);
-      applyScale();
+  /* ───────────────────── Flip Camera ────────────────────────── */
+  function flipCamera() {
+    if (!running || isSwitching) return;
+    if (isRecording) stopRecording();
+    var nextFacing = (currentFacing === 'user') ? 'environment' : 'user';
+    setStatus('正在切换摄像头…');
+    running = false;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    if (stream) {
+      try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+      stream = null;
     }
+    video.srcObject = null;
+    isSwitching     = false; // reset so startCamera can proceed
+    startCamera(nextFacing);
+  }
+
+  /* ─────────────────── Slider events ────────────────────────── */
+  densitySlider.addEventListener('input', function () {
+    cols = parseInt(densitySlider.value, 10) || 80;
+    densityVal.textContent = cols;
+    measureCache = {};
+    if (running) { computeRows(); applyScale(); }
   });
-
-  /* ── Buttons ── */
-  startBtn.addEventListener('click', startCamera);
-  stopBtn.addEventListener('click',  stopCamera);
-
-  /* ── Window resize: re-apply scale ── */
-  window.addEventListener('resize', () => {
+  fontSizeSlider.addEventListener('input', function () {
+    baseFontSize = parseInt(fontSizeSlider.value, 10) || 10;
+    fontSizeVal.textContent = baseFontSize;
+    measureCache = {};
     if (running) applyScale();
   });
 
-})();
+  /* ─────────────────── Button events ────────────────────────── */
+  startBtn.addEventListener('click', function () { startCamera(currentFacing); });
+  stopBtn .addEventListener('click', stopCamera);
+  flipBtn .addEventListener('click', flipCamera);
+  recBtn  .addEventListener('click', function () {
+    if (isRecording) stopRecording(); else startRecording();
+  });
+
+  /* ── Resize ── */
+  window.addEventListener('resize', function () { if (running) applyScale(); });
+
+  /* ── Pause render when tab is hidden — resume when visible ── */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (animId) { cancelAnimationFrame(animId); animId = null; }
+    } else {
+      if (running && !animId) render();
+    }
+  });
+
+}());
 </script>
 </body>
 </html>
